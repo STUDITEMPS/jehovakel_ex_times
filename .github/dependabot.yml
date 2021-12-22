@@ -4,7 +4,6 @@ registries:
     type: hex-organization
     organization: oban
     key: "${{secrets.HEX_ORGANIZATION_OBAN_KEY}}"
-
 updates:
 - package-ecosystem: mix
   directory: "/"

@@ -358,4 +358,20 @@ defmodule Shared.Month do
         ", month: " <> Inspect.inspect(month, %Inspect.Opts{}) <> ">"
     end
   end
+
+  defimpl Shared.Zeitvergleich, for: Shared.Month do
+    alias Shared.Month
+
+    def frueher_als?(%Month{} = self, %Month{} = other) do
+      Month.compare(self, other) == :lt
+    end
+
+    def zeitgleich?(%Month{} = self, %Month{} = other) do
+      Month.compare(self, other) == :eq
+    end
+
+    def frueher_als_oder_zeitgleich?(%Month{} = self, %Month{} = other) do
+      self |> frueher_als?(other) || self |> zeitgleich?(other)
+    end
+  end
 end

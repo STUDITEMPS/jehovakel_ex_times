@@ -44,4 +44,28 @@ defmodule Shared.MonthTest do
     assert @second_month_of_2018 |> Month.compare(@second_month_of_2019) == :lt
     assert @second_month_of_2019 |> Month.compare(@second_month_of_2019) == :eq
   end
+
+  describe "frueher_als?/2" do
+    test "Month" do
+      assert ~m[2021-01] |> Shared.Zeitvergleich.frueher_als?(~m[2021-03])
+      refute ~m[2021-01] |> Shared.Zeitvergleich.frueher_als?(~m[2020-03])
+      refute ~m[2021-01] |> Shared.Zeitvergleich.frueher_als?(~m[2021-01])
+    end
+  end
+
+  describe "zeitgleich?/2" do
+    test "Month" do
+      refute ~m[2021-01] |> Shared.Zeitvergleich.zeitgleich?(~m[2021-03])
+      refute ~m[2021-01] |> Shared.Zeitvergleich.zeitgleich?(~m[2020-03])
+      assert ~m[2021-01] |> Shared.Zeitvergleich.zeitgleich?(~m[2021-01])
+    end
+  end
+
+  describe "frueher_als_oder_zeitgleich?/2" do
+    test "Month" do
+      assert ~m[2021-01] |> Shared.Zeitvergleich.frueher_als_oder_zeitgleich?(~m[2021-03])
+      refute ~m[2021-01] |> Shared.Zeitvergleich.frueher_als_oder_zeitgleich?(~m[2020-03])
+      assert ~m[2021-01] |> Shared.Zeitvergleich.frueher_als_oder_zeitgleich?(~m[2021-01])
+    end
+  end
 end
