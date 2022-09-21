@@ -29,4 +29,19 @@ defmodule Shared.Dauer do
     {:ok, dauer} = Timex.Duration.parse(dauer_als_string)
     dauer
   end
+
+  @doc ~S"""
+    ## Examples
+
+    iex> ~P[1Y12M1DT13H22M11S]
+    #<Duration(P1Y12M1DT13H22M11S)>
+
+    iex> dauer = ~P[T4H22M]
+    #<Duration(PT4H24M)>
+    iex> Shared.Dauer.in_stunden(dauer)
+    4.4
+  """
+  def sigil_P(string, []) do
+    Shared.Dauer.parse!("P" <> string)
+  end
 end
