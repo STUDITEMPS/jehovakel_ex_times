@@ -1,12 +1,22 @@
 name: jehovakel_ex_times
 id: 'ari:cloud:compass:e1d41f8a-4a61-4fa9-80d9-a0967619f2ea:component/e8fcfeae-19d1-4cce-9554-6226e62cd618/12f9a81f-b3a7-409c-b614-9c653f992baf'
-description: null
+description: |-
+  This library provides date, time, range and calendar functions for Elixir.
 ownerId: 'ari:cloud:teams::team/02f444fe-c2c0-4af5-a033-cb345c5f2324'
 fields: {}
 links:
   - name: null
     type: REPOSITORY
     url: 'https://github.com/STUDITEMPS/jehovakel_ex_times'
+  - name: null
+    type: PROJECT
+    url: 'https://studitemps.atlassian.net/browse/FOT'
+  - name: Around Room
+    type: CHAT_CHANNEL
+    url: 'https://around.co/r/jv-finopstech'
+  - name: Slack Channel
+    type: CHAT_CHANNEL
+    url: 'https://jobvalley.slack.com/archives/C6XRTJD9R'
 relationships: {}
 
 # Learn more about formatting compass.yml:
