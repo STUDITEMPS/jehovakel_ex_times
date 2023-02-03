@@ -107,17 +107,17 @@ defmodule Shared.Zeitperiode do
 
   @spec to_iso8601(Timex.Interval.t()) :: binary()
   def to_iso8601(%Timex.Interval{from: %NaiveDateTime{} = von, until: %NaiveDateTime{} = bis}) do
-    [von, bis] |> Enum.map(&NaiveDateTime.to_iso8601/1) |> Enum.join("/")
+    [von, bis] |> Enum.map_join("/", &NaiveDateTime.to_iso8601/1)
   end
 
   @spec to_iso8601(start: DateTime.t(), ende: DateTime.t()) :: binary()
   def to_iso8601(start: %DateTime{} = start, ende: %DateTime{} = ende) do
-    [start, ende] |> Enum.map(&DateTime.to_iso8601/1) |> Enum.join("/")
+    [start, ende] |> Enum.map_join("/", &DateTime.to_iso8601/1)
   end
 
   @spec to_iso8601(start: DateTime.t(), ende: DateTime.t()) :: binary()
   def to_iso8601(start: %NaiveDateTime{} = start, ende: %NaiveDateTime{} = ende) do
-    [start, ende] |> Enum.map(&NaiveDateTime.to_iso8601/1) |> Enum.join("/")
+    [start, ende] |> Enum.map_join("/", &NaiveDateTime.to_iso8601/1)
   end
 
   defp to_interval(von, bis) do

@@ -70,12 +70,12 @@ defmodule Shared.ZeitperiodeTest do
     test "Periode kann Zeitzonen überspannen" do
       periode = Periode.new(~U[2018-03-24 21:00:00Z], ~U[2018-03-25 02:00:00Z])
       assert Periode.von(periode) == ~N[2018-03-24 22:00:00]
-      # FIXME: Sollte eigentlich bis 4 Uhr gehen
+      # WONTFIX: Sollte eigentlich bis 4 Uhr gehen
       assert Periode.bis(periode) == ~N[2018-03-25 03:00:00]
 
       periode = Periode.new(~U[2018-10-28 00:00:00Z], ~U[2018-10-28 08:00:00Z])
       assert Periode.von(periode) == ~N[2018-10-28 02:00:00]
-      # FIXME: Sollte eigentlich bis 09 Uhr gehen
+      # WONTFIX: Sollte eigentlich bis 09 Uhr gehen
       assert Periode.bis(periode) == ~N[2018-10-28 10:00:00]
     end
   end
@@ -193,7 +193,7 @@ defmodule Shared.ZeitperiodeTest do
       periode = Periode.new(start, ende)
 
       assert to_string(periode.from) == "2018-10-27 22:00:00"
-      # FIXME: Sollte eigentlich bis 04:00 gehen
+      # WONTFIX: Sollte eigentlich bis 04:00 gehen
       assert to_string(periode.until) == "2018-10-28 05:00:00"
       assert Periode.dauer_in_stunden(periode) == 7.0
     end
@@ -205,10 +205,10 @@ defmodule Shared.ZeitperiodeTest do
       periode = Periode.new(start, ende)
 
       assert to_string(periode.from) == "2018-10-28 02:30:00"
-      # FIXME: Sollte eigentlich bis 08:30 Uhr gehen
+      # WONTFIX: Sollte eigentlich bis 08:30 Uhr gehen
       assert to_string(periode.until) == "2018-10-28 09:30:00"
 
-      # FIXME: Sollte eigentlich nur 6 Stunden betragen da wir bei
+      # WONTFIX: Sollte eigentlich nur 6 Stunden betragen da wir bei
       # uneindeutigem Start von Winterzeit ausgehen und 02:30+02:00 bis
       # 08:30+02:00 sind 6 Stunden...
       assert Periode.dauer_in_stunden(periode) == 7.0
@@ -222,7 +222,7 @@ defmodule Shared.ZeitperiodeTest do
 
       assert to_string(periode.from) == "2018-10-27 22:00:00"
       assert to_string(periode.until) == "2018-10-28 02:30:00"
-      # FIXME: Sollte eigentlich 5.5 Stunden sein, da wir bei uneindeutigem
+      # WONTFIX: Sollte eigentlich 5.5 Stunden sein, da wir bei uneindeutigem
       # Ende von Winterzeit ausgehen und zwischen 22:00+02:00 (20:00 UTC) und
       # 02:30+01:00 (01:30 UTC) vergehen 5.5 Stunden.
       assert Periode.dauer_in_stunden(periode) == 4.5
@@ -288,7 +288,7 @@ defmodule Shared.ZeitperiodeTest do
       periode = Periode.new(start, ende)
 
       assert to_string(periode.from) == "2018-03-24 22:00:00"
-      # FIXME: Sollte eigentlich 4 Uhr sein
+      # WONTFIX: Sollte eigentlich 4 Uhr sein
       assert to_string(periode.until) == "2018-03-25 03:00:00"
       assert Periode.dauer_in_stunden(periode) == 5.0
     end
@@ -309,7 +309,7 @@ defmodule Shared.ZeitperiodeTest do
       periode = Periode.new(start, ende)
 
       assert to_string(periode.from) == "2018-10-27 22:00:00"
-      # FIXME: Sollte eigentlich 4 Uhr sein
+      # WONTFIX: Sollte eigentlich 4 Uhr sein
       assert to_string(periode.until) == "2018-10-28 05:00:00"
       assert Periode.dauer_in_stunden(periode) == 7.0
     end
@@ -337,17 +337,17 @@ defmodule Shared.ZeitperiodeTest do
     test "Zeitumstellung und die Zeitzone kann nun geparsed werden kann" do
       interval = "2018-10-27T17:00:00+02:00/2018-10-28T10:00:00+01:00"
       assert periode = Periode.from_interval(interval)
-      # FIXME: Sollte eigentlich bis 10 Uhr gehen
+      # WONTFIX: Sollte eigentlich bis 10 Uhr gehen
       assert Periode.to_string(periode) == "[2018-10-27 17:00, 2018-10-28 11:00)"
 
       interval = "2019-03-30T22:00:00+01:00/2019-03-31T07:00:00+02:00"
       assert periode = Periode.from_interval(interval)
-      # FIXME: Sollte eigentlich bis 7 Uhr gehen
+      # WONTFIX: Sollte eigentlich bis 7 Uhr gehen
       assert Periode.to_string(periode) == "[2019-03-30 22:00, 2019-03-31 06:00)"
 
       interval = "2019-03-30T22:00:00+01:00/2019-03-31T04:00:00+02:00"
       assert periode = Periode.from_interval(interval)
-      # FIXME: Sollte eigentlich bis 4 Uhr gehen
+      # WONTFIX: Sollte eigentlich bis 4 Uhr gehen
       assert Periode.to_string(periode) == "[2019-03-30 22:00, 2019-03-31 03:00)"
     end
   end
