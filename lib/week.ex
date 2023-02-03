@@ -324,7 +324,8 @@ defmodule Shared.Week do
 
   def sigil_v(
         <<year::bytes-size(4)>> <>
-          "-W" <> <<week::bytes-size(2)>> <>
+          "-W" <>
+          <<week::bytes-size(2)>> <>
           "-" <> <<weekday::bytes-size(1)>>,
         []
       ) do
