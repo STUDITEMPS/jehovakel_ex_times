@@ -192,9 +192,9 @@ defmodule Shared.ZeitperiodeTest do
 
       periode = Periode.new(start, ende)
 
-      assert NaiveDateTime.truncate(periode.from, :second) == ~N[2018-10-27 22:00:00]
+      assert to_string(periode.from) == "2018-10-27 22:00:00"
       # WONTFIX: Sollte eigentlich bis 04:00 gehen
-      assert NaiveDateTime.truncate(periode.until, :second) == ~N[2018-10-28 05:00:00]
+      assert to_string(periode.until) == "2018-10-28 05:00:00"
       assert Periode.dauer_in_stunden(periode) == 7.0
     end
 
@@ -204,9 +204,9 @@ defmodule Shared.ZeitperiodeTest do
 
       periode = Periode.new(start, ende)
 
-      assert NaiveDateTime.truncate(periode.from, :second) == ~N[2018-10-28 02:30:00]
+      assert to_string(periode.from) == "2018-10-28 02:30:00"
       # WONTFIX: Sollte eigentlich bis 08:30 Uhr gehen
-      assert NaiveDateTime.truncate(periode.until, :second) == ~N[2018-10-28 09:30:00]
+      assert to_string(periode.until) == "2018-10-28 09:30:00"
 
       # WONTFIX: Sollte eigentlich nur 6 Stunden betragen da wir bei
       # uneindeutigem Start von Winterzeit ausgehen und 02:30+02:00 bis
@@ -287,9 +287,9 @@ defmodule Shared.ZeitperiodeTest do
 
       periode = Periode.new(start, ende)
 
-      assert NaiveDateTime.truncate(periode.from, :second) == ~N[2018-03-24 22:00:00]
+      assert to_string(periode.from) == "2018-03-24 22:00:00"
       # WONTFIX: Sollte eigentlich 4 Uhr sein
-      assert NaiveDateTime.truncate(periode.until, :second) == ~N[2018-03-25 03:00:00]
+      assert to_string(periode.until) == "2018-03-25 03:00:00"
       assert Periode.dauer_in_stunden(periode) == 5.0
     end
 
@@ -308,9 +308,9 @@ defmodule Shared.ZeitperiodeTest do
 
       periode = Periode.new(start, ende)
 
-      assert NaiveDateTime.truncate(periode.from, :second) == ~N[2018-10-27 22:00:00]
+      assert to_string(periode.from) == "2018-10-27 22:00:00"
       # WONTFIX: Sollte eigentlich 4 Uhr sein
-      assert NaiveDateTime.truncate(periode.until, :second) == ~N[2018-10-28 05:00:00]
+      assert to_string(periode.until) == "2018-10-28 05:00:00"
       assert Periode.dauer_in_stunden(periode) == 7.0
     end
 
