@@ -162,7 +162,7 @@ defmodule Shared.Month do
   ## Examples
 
     iex> Month.to_range(@third_month_of_2018)
-    #DateRange<~D[2018-03-01], ~D[2018-03-31]>
+    Date.range(~D[2018-03-01], ~D[2018-03-31])
 
   """
   def to_range(%__MODULE__{} = month) do

@@ -5,7 +5,7 @@ defmodule JehovakelExTimes.MixProject do
     [
       app: :jehovakel_ex_times,
       version: "1.0.4",
-      elixir: "~> 1.11",
+      elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       test_paths: ["lib"],
