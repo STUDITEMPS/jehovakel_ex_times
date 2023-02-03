@@ -120,10 +120,13 @@ defmodule Shared.Zeitperiode do
     [start, ende] |> Enum.map_join("/", &NaiveDateTime.to_iso8601/1)
   end
 
+  defp truncate(%NaiveDateTime{} = datetime), do: NaiveDateTime.truncate(datetime, :second)
+  defp truncate(%DateTime{} = datetime), do: DateTime.truncate(datetime, :second)
+
   defp to_interval(von, bis) do
     Timex.Interval.new(
-      from: von,
-      until: bis,
+      from: truncate(von),
+      until: truncate(bis),
       left_open: false,
       right_open: true,
       step: [seconds: 1]
