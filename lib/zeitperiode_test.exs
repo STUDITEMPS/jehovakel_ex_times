@@ -55,6 +55,20 @@ defmodule Shared.ZeitperiodeTest do
     end
   end
 
+  describe "Konstruktion aus Dates" do
+    test "Bis-Datum ist Teil der Zeitperiode" do
+      von = ~D[2018-03-20]
+      bis = ~D[2018-03-31]
+      periode = Periode.new(von, bis)
+
+      assert Periode.to_string(periode) == "[2018-03-20 00:00, 2018-04-01 00:00)"
+    end
+
+    test "Ende kann nicht vor Start liegen" do
+      assert {:error, :invalid_until} = Periode.new(~D[2020-01-01], ~D[2019-12-31])
+    end
+  end
+
   describe "Konstruktion aus DateTimes" do
     test "Ende kann nicht vor Start liegen" do
       assert {:error, :invalid_until} =

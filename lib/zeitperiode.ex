@@ -56,6 +56,14 @@ defmodule Shared.Zeitperiode do
   @spec new(von :: NaiveDateTime.t(), bis :: NaiveDateTime.t()) :: t
   def new(%NaiveDateTime{} = von, %NaiveDateTime{} = bis), do: to_interval(von, bis)
 
+  @spec new(von :: Date.t(), bis :: Date.t()) :: t
+  def new(%Date{} = von, %Date{} = bis) do
+    von_als_datetime = to_datetime(von, ~T[00:00:00])
+    bis_als_datetime = bis |> Timex.shift(days: 1) |> to_datetime(~T[00:00:00])
+
+    to_interval(von_als_datetime, bis_als_datetime)
+  end
+
   @spec from_interval(interval :: String.t()) :: t
   def from_interval(interval) when is_binary(interval) do
     [start: start, ende: ende] = parse(interval)
