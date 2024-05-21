@@ -1,6 +1,7 @@
 {
     "name": "jehovakel_ex_times",
     "dockerComposeFile": [
+        "../docker-compose.yml",
         "docker-compose.yml"
     ],
     "service": "devcontainer",
