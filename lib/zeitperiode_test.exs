@@ -417,12 +417,12 @@ defmodule Shared.ZeitperiodeTest do
     test "erkennt, ob ein Periode komplett in einem anderen Periode liegt" do
       periode = Periode.new(~D[2018-03-20], ~T[23:00:00], ~T[00:00:00])
 
-      refute periode |> Periode.teil_von?(periode)
+      assert periode |> Periode.teil_von?(periode)
 
       refute Periode.new(~D[2018-03-20], ~T[23:00:00], ~T[01:00:00])
              |> Periode.teil_von?(periode)
 
-      refute Periode.new(~D[2018-03-20], ~T[23:30:00], ~T[00:00:00])
+      assert Periode.new(~D[2018-03-20], ~T[23:30:00], ~T[00:00:00])
              |> Periode.teil_von?(periode)
 
       refute Periode.new(~D[2018-03-20], ~T[22:30:00], ~T[23:00:00])

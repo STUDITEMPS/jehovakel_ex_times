@@ -3,13 +3,14 @@ defmodule Shared.Zeitperiode do
   Repräsentiert eine Arbeitszeit-Periode oder Schicht
   """
   @type t :: Timex.Interval.t()
-  @type interval :: [
-          start: DateTime.t() | NaiveDateTime.t(),
-          ende: DateTime.t() | NaiveDateTime.t()
-        ]
+
+  @type interval ::
+          [start: DateTime.t(), ende: DateTime.t()]
+          | [start: NaiveDateTime.t(), ende: NaiveDateTime.t()]
+
   @default_base_timezone_name "Europe/Berlin"
 
-  @spec new(kalendertag :: Date.t(), von :: Time.t(), bis :: Time.t()) :: t
+  @spec new(Date.t(), Time.t(), Time.t()) :: t()
   def new(%Date{} = kalendertag, %Time{} = von, %Time{} = bis) when von < bis do
     von_als_datetime = to_datetime(kalendertag, von)
     bis_als_datetime = to_datetime(kalendertag, bis)
@@ -27,7 +28,7 @@ defmodule Shared.Zeitperiode do
   end
 
   # Basiszeitzone ist die Zeitzone, in der die Zeit erfasst wurde, aktuell immer Dtl.
-  @spec new(von :: DateTime.t(), bis :: DateTime.t(), base_timezone_name :: String.t()) :: t
+  @spec new(DateTime.t(), DateTime.t(), String.t()) :: t
   def new(%DateTime{} = von, %DateTime{} = bis, base_timezone_name) do
     von = Shared.Zeitperiode.Timezone.convert(von, base_timezone_name)
 
@@ -88,21 +89,21 @@ defmodule Shared.Zeitperiode do
     periode |> bis() |> NaiveDateTime.to_date()
   end
 
-  @spec dauer(t) :: number | {:error, any} | Timex.Duration.t()
+  @spec dauer(t) :: Timex.Duration.t() | {:error, any}
   def dauer(periode), do: duration(periode, :duration)
-  @spec dauer_in_stunden(t) :: number | {:error, any} | Timex.Duration.t()
+  @spec dauer_in_stunden(t) :: float | {:error, any}
   def dauer_in_stunden(periode), do: duration(periode, :hours)
-  @spec dauer_in_minuten(t) :: number | {:error, any} | Timex.Duration.t()
+  @spec dauer_in_minuten(t) :: float | {:error, any}
   def dauer_in_minuten(periode), do: duration(periode, :minutes)
 
   @spec ueberschneidung?(periode :: t, andere_periode :: t) :: boolean
   def ueberschneidung?(periode, andere_periode) do
-    periode.from in andere_periode || andere_periode.from in periode
+    Timex.Interval.overlaps?(periode, andere_periode)
   end
 
   @spec teil_von?(zu_testende_periode :: t, periode :: t) :: boolean
   def teil_von?(zu_testende_periode, periode) do
-    zu_testende_periode.from in periode && zu_testende_periode.until in periode
+    Timex.Interval.contains?(periode, zu_testende_periode)
   end
 
   @spec beginnt_vor?(periode1 :: t, periode2 :: t) :: boolean
@@ -118,32 +119,13 @@ defmodule Shared.Zeitperiode do
     [von, bis] |> Enum.map_join("/", &NaiveDateTime.to_iso8601/1)
   end
 
-  @spec to_iso8601(start: DateTime.t(), ende: DateTime.t()) :: binary()
+  @spec to_iso8601(interval()) :: binary()
   def to_iso8601(start: %DateTime{} = start, ende: %DateTime{} = ende) do
     [start, ende] |> Enum.map_join("/", &DateTime.to_iso8601/1)
   end
 
-  @spec to_iso8601(start: DateTime.t(), ende: DateTime.t()) :: binary()
   def to_iso8601(start: %NaiveDateTime{} = start, ende: %NaiveDateTime{} = ende) do
     [start, ende] |> Enum.map_join("/", &NaiveDateTime.to_iso8601/1)
-  end
-
-  defp truncate(%NaiveDateTime{} = datetime), do: NaiveDateTime.truncate(datetime, :second)
-  defp truncate(%DateTime{} = datetime), do: DateTime.truncate(datetime, :second)
-
-  defp to_interval(von, bis) do
-    Timex.Interval.new(
-      from: truncate(von),
-      until: truncate(bis),
-      left_open: false,
-      right_open: true,
-      step: [seconds: 1]
-    )
-  end
-
-  @deprecated "Use parse/1 instead"
-  def parse_interval(interval) when is_binary(interval) do
-    parse(interval)
   end
 
   @spec parse(binary()) :: interval()
@@ -156,23 +138,11 @@ defmodule Shared.Zeitperiode do
     [start: start |> Shared.Zeit.parse(), ende: ende |> Shared.Zeit.parse()]
   end
 
+  @deprecated "Use parse/1 instead"
+  def parse_interval(interval) when is_binary(interval), do: parse(interval)
+
   @deprecated "Use Shared.Zeit.parse/1 instead"
-  def parse_time(time) when is_binary(time) do
-    Shared.Zeit.parse(time)
-  end
-
-  defp to_datetime(date, time) do
-    {:ok, naive_datetime} = NaiveDateTime.new(date, time)
-    naive_datetime
-  end
-
-  defp duration(periode, :duration), do: Timex.Interval.duration(periode, :duration)
-
-  defp duration(periode, :hours),
-    do: periode |> duration(:duration) |> Timex.Duration.to_hours()
-
-  defp duration(periode, :minutes),
-    do: periode |> duration(:duration) |> Timex.Duration.to_minutes() |> Float.round()
+  def parse_time(time) when is_binary(time), do: Shared.Zeit.parse(time)
 
   @spec dauer_der_ueberschneidung(periode1 :: Timex.Interval.t(), periode2 :: Timex.Interval.t()) ::
           Timex.Duration.t()
@@ -218,6 +188,29 @@ defmodule Shared.Zeitperiode do
   defdelegate differenz(basis_intervall, abzuziehendes_intervall),
     to: Timex.Interval,
     as: :difference
+
+  defp truncate(%NaiveDateTime{} = datetime), do: NaiveDateTime.truncate(datetime, :second)
+  defp truncate(%DateTime{} = datetime), do: DateTime.truncate(datetime, :second)
+
+  defp to_interval(von, bis) do
+    Timex.Interval.new(
+      from: truncate(von),
+      until: truncate(bis),
+      left_open: false,
+      right_open: true,
+      step: [seconds: 1]
+    )
+  end
+
+  defp to_datetime(date, time), do: NaiveDateTime.new!(date, time)
+
+  defp duration(periode, :duration), do: Timex.Interval.duration(periode, :duration)
+
+  defp duration(periode, :hours),
+    do: periode |> duration(:duration) |> Timex.Duration.to_hours()
+
+  defp duration(periode, :minutes),
+    do: periode |> duration(:duration) |> Timex.Duration.to_minutes() |> Float.round()
 
   defmodule Timezone do
     @spec convert(
