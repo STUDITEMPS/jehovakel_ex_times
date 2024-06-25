@@ -65,6 +65,15 @@ defmodule Shared.Month do
   @doc ~S"""
   ## Examples:
 
+    iex> Month.from_day(~U[2024-01-06T00:00:00.000Z])
+    {:ok, ~m[2024-01]}
+
+    iex> Month.from_day(~N[2024-01-31T23:59:59])
+    {:ok, ~m[2024-01]}
+
+    iex> Month.from_day(DateTime.new!(~D[2024-02-01], ~T[00:30:00], "Europe/Berlin"))
+    {:ok, ~m[2024-02]}
+
     iex> Month.from_day(%Date{year: 2018, month: 5, day: 17})
     {:ok, ~m[2018-05]}
 
@@ -78,12 +87,21 @@ defmodule Shared.Month do
     {:error, :invalid_month_index}
 
   """
-  def from_day(%Date{year: year, month: month}) do
-    new(year, month)
-  end
+  @spec from_day(Date.t() | DateTime.t() | NaiveDateTime.t()) ::
+          {:ok, t()} | {:error, :invalid_month_index}
+  def from_day(%{year: year, month: month}), do: new(year, month)
 
   @doc ~S"""
   ## Examples
+
+    iex> Month.from_day!(~U[2024-01-06T00:00:00.000Z])
+    ~m[2024-01]
+
+    iex> Month.from_day!(~N[2024-01-31T23:59:59])
+    ~m[2024-01]
+
+    iex> Month.from_day!(DateTime.new!(~D[2024-02-01], ~T[00:30:00], "Europe/Berlin"))
+    ~m[2024-02]
 
     iex> Month.from_day!(%Date{year: 2018, month: 5, day: 17})
     %Month{year: 2018, month: 5}
@@ -92,9 +110,88 @@ defmodule Shared.Month do
     ** (Shared.Month.InvalidMonthIndex) Month must be an integer between 1 and 12, but was 13
 
   """
-  def from_day!(%Date{year: year, month: month}) do
-    new!(year, month)
-  end
+  @spec from_day!(Date.t() | DateTime.t() | NaiveDateTime.t()) :: t()
+  def from_day!(%{year: year, month: month}), do: new!(year, month)
+
+  @doc """
+  Returns the current month based on utc time.
+
+  To get the month of a given date see `from_day!/1`
+  """
+  @spec utc_current :: t()
+  def utc_current, do: from_day!(Date.utc_today())
+
+  @doc """
+  Returns the last month based on utc time
+  """
+  @spec utc_last :: t()
+  def utc_last, do: previous(Date.utc_today())
+
+  @doc """
+  Returns the next month based on utc time
+  """
+  @spec utc_next :: t()
+  def utc_next, do: next(Date.utc_today())
+
+  @doc """
+  Returns the current month based on local time
+
+  To get the month of a given date see `from_day!/1`
+  """
+  @spec current :: t()
+  def current, do: from_day!(Timex.local())
+
+  @doc """
+  Returns the previous month based on local time
+  """
+  @spec last :: t()
+  def last, do: previous(Timex.local())
+
+  @doc """
+  Returns the previous month based on the given date datetime or month.
+
+  ## Examples
+
+      iex> Month.previous(~m[2018-10])
+      ~m[2018-09]
+
+      iex> Month.previous(~U[2024-01-06T00:00:00.000Z])
+      ~m[2023-12]
+
+      iex> Month.previous(~N[2024-01-31T23:59:59])
+      ~m[2023-12]
+
+      iex> Month.previous(DateTime.new!(~D[2024-02-01], ~T[00:30:00], "Europe/Berlin"))
+      ~m[2024-01]
+  """
+  @spec previous :: t()
+  @spec previous(Date.t() | DateTime.t() | NaiveDateTime.t() | t()) :: t()
+  def previous(date \\ Timex.local())
+  def previous(%__MODULE__{} = month), do: add(month, -1)
+  def previous(date), do: date |> from_day!() |> add(-1)
+
+  @doc """
+  Returns the next month based on the given date datetime or month.
+
+  ## Examples
+
+      iex> Month.next(~m[2018-10])
+      ~m[2018-11]
+
+      iex> Month.next(~U[2024-01-06T00:00:00.000Z])
+      ~m[2024-02]
+
+      iex> Month.next(~N[2024-01-31T23:59:59])
+      ~m[2024-02]
+
+      iex> Month.next(DateTime.new!(~D[2024-02-01], ~T[00:30:00], "Europe/Berlin"))
+      ~m[2024-03]
+  """
+  @spec next :: t()
+  @spec next(Date.t() | DateTime.t() | NaiveDateTime.t() | t()) :: t()
+  def next(date \\ Timex.local())
+  def next(%__MODULE__{} = month), do: add(month, 1)
+  def next(date), do: date |> from_day!() |> add(1)
 
   @doc ~S"""
   ## Examples:
@@ -210,20 +307,18 @@ defmodule Shared.Month do
     %Month{year: 2018, month: 3}
 
   """
+  @spec add(t(), integer()) :: t()
+  def add(%__MODULE__{} = month, 0), do: month
   def add(%__MODULE__{year: year, month: month}, months_to_add) when is_integer(months_to_add) do
-    zero_based_month_index = month - 1
-    amount_of_months_since_anno_domini = year * 12 + zero_based_month_index + months_to_add
-    {amount_of_years, amount_of_months} = divmod(amount_of_months_since_anno_domini, 12)
-    %__MODULE__{year: amount_of_years, month: amount_of_months + 1}
-  end
+    new_year = year + div(months_to_add, 12)
+    new_month = month + rem(months_to_add, 12)
 
-  defp divmod(dividend, divisor) do
-    {div(dividend, divisor), mod(dividend, divisor)}
+    cond do
+      new_month > 12 -> new!(new_year + 1, new_month - 12)
+      new_month < 1 -> new!(new_year - 1, new_month + 12)
+      :otherwise -> new!(new_year, new_month)
+    end
   end
-
-  defp mod(x, y) when x > 0, do: rem(x, y)
-  defp mod(x, y) when x < 0, do: rem(x, y) + y
-  defp mod(0, _y), do: 0
 
   @doc ~S"""
   ## Examples:
@@ -292,11 +387,7 @@ defmodule Shared.Month do
     iex> @fifth_month_of_2020 |> Month.compare(@third_month_of_2018)
     :gt
   """
-  def compare(%__MODULE__{year: year, month: month}, %__MODULE__{
-        year: year,
-        month: month
-      }),
-      do: :eq
+  def compare(%__MODULE__{} = month, month), do: :eq
 
   def compare(%__MODULE__{} = first, %__MODULE__{} = second) do
     if first |> earlier_than?(second) do
