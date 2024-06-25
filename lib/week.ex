@@ -61,7 +61,7 @@ defmodule Shared.Week do
     ** (Shared.Week.InvalidWeekIndexError) Week must be an integer between 1 and 53, but was -7
 
   """
-
+  @spec new!(year(), week_number()) :: t() | no_return()
   def new!(year, week) do
     case new(year, week) do
       {:ok, week} ->
@@ -72,6 +72,85 @@ defmodule Shared.Week do
               "Week must be an integer between 1 and 53, but was " <> inspect(week)
     end
   end
+
+  @doc """
+  Returns the current week based on utc time.
+
+  To get the week of a given date see `from_day!/1`
+  """
+  @spec utc_current :: t()
+  def utc_current, do: from_day!(Date.utc_today())
+
+  @doc """
+  Returns the last week based on utc time
+  """
+  @spec utc_last :: t()
+  def utc_last, do: previous(Date.utc_today())
+
+  @doc """
+  Returns the next week based on utc time
+  """
+  @spec utc_next :: t()
+  def utc_next, do: next(Date.utc_today())
+
+  @doc """
+  Returns the current week based on local time
+
+  To get the week of a given date see `from_day!/1`
+  """
+  @spec current :: t()
+  def current, do: from_day!(Timex.local())
+
+  @doc """
+  Returns the previous week based on local time
+  """
+  @spec last :: t()
+  def last, do: previous(Timex.local())
+
+  @doc """
+  Returns the previous week based on the given date datetime or week.
+
+  ## Examples
+
+      iex> Week.previous(~v[2018-20])
+      ~v[2018-19]
+
+      iex> Week.previous(~U[2024-01-06T00:00:00.000Z])
+      ~v[2023-52]
+
+      iex> Week.previous(~N[2024-01-08T23:59:59])
+      ~v[2024-01]
+
+      iex> Week.previous(DateTime.new!(~D[2024-01-08], ~T[00:30:00], "Europe/Berlin"))
+      ~v[2024-01]
+  """
+  @spec previous :: t()
+  @spec previous(Date.t() | DateTime.t() | NaiveDateTime.t() | t()) :: t()
+  def previous(date \\ Timex.local())
+  def previous(%__MODULE__{} = week), do: shift(week, -1)
+  def previous(date), do: date |> Timex.shift(weeks: -1) |> from_day!()
+
+  @doc """
+  Returns the next week based on the given date datetime or week.
+  ## Examples
+
+      iex> Week.next(~v[2018-20])
+      ~v[2018-21]
+
+      iex> Week.next(~U[2024-01-06T00:00:00.000Z])
+      ~v[2024-02]
+
+      iex> Week.next(~N[2024-01-07T23:59:59])
+      ~v[2024-02]
+
+      iex> Week.next(DateTime.new!(~D[2024-01-08], ~T[00:30:00], "Europe/Berlin"))
+      ~v[2024-03]
+  """
+  @spec next :: t()
+  @spec next(Date.t() | DateTime.t() | NaiveDateTime.t() | t()) :: t()
+  def next(date \\ Timex.local())
+  def next(%__MODULE__{} = week), do: shift(week, 1)
+  def next(date), do: date |> Timex.shift(weeks: 1) |> from_day!()
 
   @doc ~S"""
   ## Examples:
@@ -89,12 +168,13 @@ defmodule Shared.Week do
     {:error, :invalid_week_index}
 
   """
-  @spec from_day(Date.t()) :: Week.t()
+  @spec from_day(Date.t() | DateTime.t() | NaiveDateTime.t()) :: {:ok, Week.t()}
   def from_day(date) do
     {year, week} = Timex.iso_week(date)
     new(year, week)
   end
 
+  @spec from_day!(Date.t() | DateTime.t() | NaiveDateTime.t()) :: Week.t()
   def from_day!(date) do
     {year, week} = Timex.iso_week(date)
     new!(year, week)
