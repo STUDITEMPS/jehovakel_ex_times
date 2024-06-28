@@ -166,8 +166,7 @@ defmodule Shared.Zeitperiode do
   """
   @spec differenz(list(Timex.Interval.t()) | Timex.Interval.t(), list(Timex.Interval.t())) ::
           list(Timex.Interval.t())
-  def differenz(basis_intervalle, abzuziehende_intervalle)
-      when is_list(basis_intervalle) and is_list(abzuziehende_intervalle) do
+  def differenz(basis_intervalle, abzuziehende_intervalle) when is_list(basis_intervalle) do
     basis_intervalle |> Enum.flat_map(&differenz(&1, abzuziehende_intervalle))
   end
 

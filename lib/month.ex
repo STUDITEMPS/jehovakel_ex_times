@@ -309,6 +309,7 @@ defmodule Shared.Month do
   """
   @spec add(t(), integer()) :: t()
   def add(%__MODULE__{} = month, 0), do: month
+
   def add(%__MODULE__{year: year, month: month}, months_to_add) when is_integer(months_to_add) do
     new_year = year + div(months_to_add, 12)
     new_month = month + rem(months_to_add, 12)

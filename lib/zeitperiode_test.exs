@@ -479,6 +479,33 @@ defmodule Shared.ZeitperiodeTest do
     end
   end
 
+  describe "differenz von Listen und einzelnen Zeitperioden" do
+    test "Kann die Differenz einer Periode und einer Liste mit mehreren Perioden bilden" do
+      neun_bis_zehn = Periode.new(@datum, ~T[09:00:00], ~T[10:00:00])
+      elf_bis_zwoelf = Periode.new(@datum, ~T[11:00:00], ~T[12:00:00])
+
+      halb_zehn_bis_halb_zwoelf = Periode.new(@datum, ~T[09:30:00], ~T[11:30:00])
+
+      zehn_bis_elf = Periode.new(@datum, ~T[10:00:00], ~T[11:00:00])
+
+      assert [zehn_bis_elf] ==
+               Periode.differenz(halb_zehn_bis_halb_zwoelf, [neun_bis_zehn, elf_bis_zwoelf])
+    end
+
+    test "Kann die Differenz einer Liste mit mehreren Perioden und einer Periode bilden" do
+      neun_bis_zehn = Periode.new(@datum, ~T[09:00:00], ~T[10:00:00])
+      elf_bis_zwoelf = Periode.new(@datum, ~T[11:00:00], ~T[12:00:00])
+
+      halb_zehn_bis_halb_zwoelf = Periode.new(@datum, ~T[09:30:00], ~T[11:30:00])
+
+      neun_bis_halb_zehn = Periode.new(@datum, ~T[09:00:00], ~T[09:30:00])
+      halb_zwoelf_bis_zwoelf = Periode.new(@datum, ~T[11:30:00], ~T[12:00:00])
+
+      assert [neun_bis_halb_zehn, halb_zwoelf_bis_zwoelf] ==
+               Periode.differenz([neun_bis_zehn, elf_bis_zwoelf], halb_zehn_bis_halb_zwoelf)
+    end
+  end
+
   describe "differenz von Listen von Zeitperioden" do
     test "erzeugt neue Liste von Zeitperioden ohne die Überlappungen mit der zweiten Liste von Zeitperioden" do
       datum = ~D[2019-04-22]
