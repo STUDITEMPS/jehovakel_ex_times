@@ -188,6 +188,17 @@ defmodule Shared.Zeitperiode do
     to: Timex.Interval,
     as: :difference
 
+  @doc """
+  Ermittelt die Überschneidung zweier Zeitperioden.
+  """
+  @spec ueberschneidung(Zeitperiode.t(), Zeitperiode.t()) :: Zeitperiode.t() | nil
+  def ueberschneidung(a, b) do
+    case differenz(a, differenz(a, b)) do
+      [ueberschneidung] -> ueberschneidung
+      [] -> nil
+    end
+  end
+
   defp truncate(%NaiveDateTime{} = datetime), do: NaiveDateTime.truncate(datetime, :second)
   defp truncate(%DateTime{} = datetime), do: DateTime.truncate(datetime, :second)
 

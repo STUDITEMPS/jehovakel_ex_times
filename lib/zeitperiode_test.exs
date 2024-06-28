@@ -597,4 +597,24 @@ defmodule Shared.ZeitperiodeTest do
       end
     end
   end
+
+  describe "ueberschneidung/1" do
+    test "Gibt nil zurück, wenn zwei Perioden sich nicht überschneiden" do
+      neun_bis_zehn = Periode.new(@datum, ~T[09:00:00], ~T[10:00:00])
+      elf_bis_zwoelf = Periode.new(@datum, ~T[11:00:00], ~T[12:00:00])
+
+      assert nil == Periode.ueberschneidung(neun_bis_zehn, elf_bis_zwoelf)
+    end
+
+    test "Gibt Überschneidung zweier Perioden zurück" do
+      neun_bis_elf = Periode.new(@datum, ~T[09:00:00], ~T[11:00:00])
+      zehn_bis_vierzehn = Periode.new(@datum, ~T[10:00:00], ~T[14:00:00])
+
+      zehn_bis_elf = Periode.new(@datum, ~T[10:00:00], ~T[11:00:00])
+      elf_bis_zwoelf = Periode.new(@datum, ~T[11:00:00], ~T[12:00:00])
+
+      assert zehn_bis_elf == Periode.ueberschneidung(neun_bis_elf, zehn_bis_vierzehn)
+      assert elf_bis_zwoelf == Periode.ueberschneidung(elf_bis_zwoelf, zehn_bis_vierzehn)
+    end
+  end
 end
