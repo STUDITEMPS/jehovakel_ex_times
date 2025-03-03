@@ -31,6 +31,7 @@ defmodule JehovakelExTimes.MixProject do
       {:timex, "~> 3.7"},
       {:jason, "~> 1.0", optional: true},
       {:excoveralls, ">= 0.10.5", only: :test},
+      {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:tix, ">= 0.0.0", only: :test, runtime: false},
       # Property based Testing for Elixir (based upon PropEr)
       {:propcheck, "~> 1.2", only: [:test]},
