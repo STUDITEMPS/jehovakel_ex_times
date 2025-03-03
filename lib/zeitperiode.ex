@@ -96,15 +96,13 @@ defmodule Shared.Zeitperiode do
   @spec dauer_in_minuten(t) :: float | {:error, any}
   def dauer_in_minuten(periode), do: duration(periode, :minutes)
 
+  @deprecated "verwende `Zeitraum.ueberschneidung?/2`"
   @spec ueberschneidung?(periode :: t, andere_periode :: t) :: boolean
-  def ueberschneidung?(periode, andere_periode) do
-    Timex.Interval.overlaps?(periode, andere_periode)
-  end
+  defdelegate ueberschneidung?(periode, andere_periode), to: Shared.Zeitraum
 
+  @deprecated "verwende `Zeitraum.teil_von?/2`"
   @spec teil_von?(zu_testende_periode :: t, periode :: t) :: boolean
-  def teil_von?(zu_testende_periode, periode) do
-    Timex.Interval.contains?(periode, zu_testende_periode)
-  end
+  defdelegate teil_von?(zu_testende_periode, periode), to: Shared.Zeitraum
 
   @spec beginnt_vor?(periode1 :: t, periode2 :: t) :: boolean
   def beginnt_vor?(periode1, periode2) do
