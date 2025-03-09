@@ -219,13 +219,9 @@ defmodule Shared.ZeitperiodeTest do
       periode = Periode.new(start, ende)
 
       assert to_string(periode.from) == "2018-10-28 02:30:00"
-      # WONTFIX: Sollte eigentlich bis 08:30 Uhr gehen
-      assert to_string(periode.until) == "2018-10-28 09:30:00"
+      assert to_string(periode.until) == "2018-10-28 08:30:00"
 
-      # WONTFIX: Sollte eigentlich nur 6 Stunden betragen da wir bei
-      # uneindeutigem Start von Winterzeit ausgehen und 02:30+02:00 bis
-      # 08:30+02:00 sind 6 Stunden...
-      assert Periode.dauer_in_stunden(periode) == 7.0
+      assert Periode.dauer_in_stunden(periode) == 6.0
     end
 
     test "wenn das Ende uneindeutig ist" do
@@ -235,11 +231,8 @@ defmodule Shared.ZeitperiodeTest do
       periode = Periode.new(start, ende)
 
       assert to_string(periode.from) == "2018-10-27 22:00:00"
-      assert to_string(periode.until) == "2018-10-28 02:30:00"
-      # WONTFIX: Sollte eigentlich 5.5 Stunden sein, da wir bei uneindeutigem
-      # Ende von Winterzeit ausgehen und zwischen 22:00+02:00 (20:00 UTC) und
-      # 02:30+01:00 (01:30 UTC) vergehen 5.5 Stunden.
-      assert Periode.dauer_in_stunden(periode) == 4.5
+      assert to_string(periode.until) == "2018-10-28 03:30:00"
+      assert Periode.dauer_in_stunden(periode) == 5.5
     end
 
     test "kann die Zeitzone bei der Umstellung auf Winterzeit ermitteln" do

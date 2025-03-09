@@ -12,7 +12,7 @@ defmodule Shared.ZeitTest do
     test "Zeitumstellung von Winterzeit auf Sommerzeit" do
       zeit_in_luecke = ~N[2018-03-25 02:00:00]
 
-      assert %Timex.AmbiguousDateTime{type: :gap} =
+      assert {:error, {:could_not_resolve_timezone, "Europe/Berlin", _timestamp, :wall}} =
                Shared.Zeit.mit_deutscher_zeitzone(zeit_in_luecke)
     end
   end

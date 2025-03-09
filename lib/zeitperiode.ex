@@ -11,18 +11,16 @@ defmodule Shared.Zeitperiode do
   @default_base_timezone_name "Europe/Berlin"
 
   @spec new(Date.t(), Time.t(), Time.t()) :: t()
-  def new(%Date{} = kalendertag, %Time{} = von, %Time{} = bis) when von < bis do
-    von_als_datetime = to_datetime(kalendertag, von)
-    bis_als_datetime = to_datetime(kalendertag, bis)
-
-    to_interval(von_als_datetime, bis_als_datetime)
-  end
-
-  def new(%Date{} = kalendertag, %Time{} = von, %Time{} = bis) when von >= bis do
+  def new(%Date{} = kalendertag, %Time{} = von, %Time{} = bis) do
     von_als_datetime = to_datetime(kalendertag, von)
 
-    next_day = Timex.shift(kalendertag, days: 1)
-    bis_als_datetime = to_datetime(next_day, bis)
+    bis_als_datetime =
+      if Time.before?(von, bis) do
+        to_datetime(kalendertag, bis)
+      else
+        next_day = Timex.shift(kalendertag, days: 1)
+        to_datetime(next_day, bis)
+      end
 
     to_interval(von_als_datetime, bis_als_datetime)
   end
@@ -34,16 +32,20 @@ defmodule Shared.Zeitperiode do
 
     bis = Shared.Zeitperiode.Timezone.convert(bis, base_timezone_name)
 
-    base_timezone_von = Shared.Zeitperiode.Timezone.timezone_info_for(von, base_timezone_name)
-    base_timezone_bis = Shared.Zeitperiode.Timezone.timezone_info_for(bis, base_timezone_name)
-    summertime_offset = base_timezone_bis.offset_std - base_timezone_von.offset_std
+    %{offset_std: von_offset} = Shared.Zeitperiode.Timezone.timezone_info_for(von, base_timezone_name)
+    %{offset_std: bis_offset} = Shared.Zeitperiode.Timezone.timezone_info_for(bis, base_timezone_name)
+
+    shift = cond do
+      von_offset == bis_offset -> 0
+      von_offset == 0 -> -bis_offset
+      bis_offset == 0 -> von_offset
+    end
 
     von_naive = von |> DateTime.to_naive()
-
     bis_naive =
       bis
       |> DateTime.to_naive()
-      |> Timex.shift(seconds: -summertime_offset)
+      |> Timex.shift(seconds: shift)
 
     to_interval(von_naive, bis_naive)
   end
