@@ -46,7 +46,7 @@ defmodule Shared.Week do
     {:error, :invalid_week_index}
 
   """
-  @spec new(year(), week_number()) :: {:ok, Week.t()} | {:error, :invalid_week_index}
+  @spec new(year(), week_number()) :: {:ok, Shared.Week.t()} | {:error, :invalid_week_index}
   def new(year, week)
   def new(year, week) when week in 1..53, do: {:ok, %__MODULE__{year: year, week: week}}
   def new(_, _), do: {:error, :invalid_week_index}
@@ -168,13 +168,13 @@ defmodule Shared.Week do
     {:error, :invalid_week_index}
 
   """
-  @spec from_day(Date.t() | DateTime.t() | NaiveDateTime.t()) :: {:ok, Week.t()}
+  @spec from_day(Date.t() | DateTime.t() | NaiveDateTime.t()) :: {:ok, Shared.Week.t()}
   def from_day(date) do
     {year, week} = Timex.iso_week(date)
     new(year, week)
   end
 
-  @spec from_day!(Date.t() | DateTime.t() | NaiveDateTime.t()) :: Week.t()
+  @spec from_day!(Date.t() | DateTime.t() | NaiveDateTime.t()) :: Shared.Week.t()
   def from_day!(date) do
     {year, week} = Timex.iso_week(date)
     new!(year, week)
@@ -216,7 +216,7 @@ defmodule Shared.Week do
     %Date{year: 2018, month: 1, day: 15}
 
   """
-  @spec first_day(Week.t()) :: Date.t()
+  @spec first_day(Shared.Week.t()) :: Date.t()
   def first_day(%__MODULE__{year: year, week: week}) do
     Timex.from_iso_triplet({year, week, 1})
   end
@@ -236,7 +236,7 @@ defmodule Shared.Week do
     %Date{year: 2018, month: 1, day: 15}
 
   """
-  @spec weekday(Week.t(), weekday_number() | weekday_name()) :: Date.t() | {:error, any()}
+  @spec weekday(Shared.Week.t(), weekday_number() | weekday_name()) :: Date.t() | {:error, any()}
   def weekday(%__MODULE__{year: year, week: week}, weekday_number)
       when is_integer(weekday_number) do
     Timex.from_iso_triplet({year, week, weekday_number})
@@ -258,11 +258,11 @@ defmodule Shared.Week do
 
   ## Examples
 
-    iex> Week.to_range(@third_week_of_2018)
+    iex> Shared.Week.to_range(@third_week_of_2018)
     Date.range(~D[2018-01-15], ~D[2018-01-21])
 
   """
-  @spec to_range(Week.t()) :: DateRange.t()
+  @spec to_range(Shared.Week.t()) :: DateRange.t()
   def to_range(%__MODULE__{} = week) do
     {first_day, last_day} = to_dates(week)
 
@@ -273,7 +273,7 @@ defmodule Shared.Week do
   Returns an end-exclusive Datetime Interval spanning the whole week.
   ## Examples
 
-    iex> Week.to_datetime_interval(@third_week_of_2018)
+    iex> Shared.Week.to_datetime_interval(@third_week_of_2018)
     %Timex.Interval{
       from: ~N[2018-01-15 00:00:00],
       left_open: false,
@@ -283,7 +283,7 @@ defmodule Shared.Week do
     }
 
   """
-  @spec to_datetime_interval(Week.t()) :: Shared.Zeitperiode.t()
+  @spec to_datetime_interval(Shared.Week.t()) :: Shared.Zeitperiode.t()
   def to_datetime_interval(%__MODULE__{} = week) do
     {first_day, last_day} = to_dates(week)
 
@@ -298,11 +298,11 @@ defmodule Shared.Week do
 
   ## Examples
 
-    iex> Week.to_dates(@third_week_of_2018)
+    iex> Shared.Week.to_dates(@third_week_of_2018)
     {~D[2018-01-15], ~D[2018-01-21]}
 
   """
-  @spec to_dates(Week.t()) :: {Date.t(), Date.t()}
+  @spec to_dates(Shared.Week.t()) :: {Date.t(), Date.t()}
   def to_dates(%__MODULE__{year: year, week: week}) do
     first_day = Timex.from_iso_triplet({year, week, 1})
     last_day = Timex.from_iso_triplet({year, week, 7})
@@ -332,7 +332,7 @@ defmodule Shared.Week do
     false
 
   """
-  @spec earlier_than?(Week.t(), Week.t()) :: boolean()
+  @spec earlier_than?(Shared.Week.t(), Shared.Week.t()) :: boolean()
   def earlier_than?(%__MODULE__{year: year, week: week}, %__MODULE__{
         year: other_year,
         week: other_week
@@ -362,12 +362,14 @@ defmodule Shared.Week do
     false
 
   """
-  @spec equal_or_earlier_than?(Week.t(), Week.t()) :: boolean()
+  @spec equal_or_earlier_than?(Shared.Week.t(), Shared.Week.t()) :: boolean()
   def equal_or_earlier_than?(%__MODULE__{} = week, %__MODULE__{} = other_week) do
     week == other_week || earlier_than?(week, other_week)
   end
 
   @doc ~S"""
+  Returns the week advanced by the provided number of weeks from the starting week.
+
   ## Examples
 
     iex> Week.shift(~v[2020-05], 2)
@@ -377,9 +379,31 @@ defmodule Shared.Week do
     %Week{year: 2020, week: 53}
 
   """
-  @spec shift(Week.t(), integer()) :: Week.t()
+  @spec shift(Shared.Week.t(), integer()) :: Shared.Week.t()
   def shift(%__MODULE__{} = week, amount_of_weeks) when is_integer(amount_of_weeks) do
     week |> first_day() |> Timex.shift(weeks: amount_of_weeks) |> from_day!()
+  end
+
+  @doc ~S"""
+  Returns the number of weeks from `from_week` to `to_week`.
+
+  ## Examples
+
+    iex> Week.diff(~v[2025-02], ~v[2025-01])
+    1
+
+    iex> Week.diff(~v[2025-01], ~v[2025-01])
+    0
+
+    iex> Week.diff(~v[2025-01], ~v[2025-02])
+    -1
+
+    iex> Week.diff(~v[2025-01], ~v[2024-01])
+    52
+  """
+  @spec diff(to_week :: Shared.Week.t(), from_week :: Shared.Week.t()) :: integer()
+  def diff(%__MODULE__{} = to_week, %__MODULE__{} = from_week) do
+    Integer.floor_div(Date.diff(first_day(to_week), first_day(from_week)), 7)
   end
 
   @doc ~S"""
@@ -440,7 +464,7 @@ defmodule Shared.Week do
     :eq
 
   """
-  @spec compare(Week.t(), Week.t()) :: :lt | :gt | :eq
+  @spec compare(Shared.Week.t(), Shared.Week.t()) :: :lt | :gt | :eq
   def compare(%__MODULE__{} = week, %__MODULE__{} = other_week) do
     cond do
       week == other_week -> :eq
