@@ -333,12 +333,30 @@ defmodule Shared.Week do
 
   """
   @spec earlier_than?(Shared.Week.t(), Shared.Week.t()) :: boolean()
-  def earlier_than?(%__MODULE__{year: year, week: week}, %__MODULE__{
-        year: other_year,
-        week: other_week
-      }) do
-    year < other_year || (year == other_year && week < other_week)
+  def earlier_than?(%__MODULE__{} = week, %__MODULE__{} = other_week) do
+    week |> Shared.Zeitvergleich.frueher_als?(other_week)
   end
+
+  @doc ~S"""
+  Returns true if the week `week` is before the week `other_week`.
+  """
+  @spec before?(Shared.Week.t(), Shared.Week.t()) :: boolean()
+  defdelegate before?(week, other_week), to: Shared.Zeitvergleich, as: :frueher_alz?
+
+  @doc ~S"""
+  Returns true if the week `week` is after the week `other_week`.
+
+  ## Examples:
+
+    iex> ~v[2025-03] |> Week.after?(~v[2025-01])
+    true
+
+    iex> ~v[2024-52] |> Week.after?(~v[2025-01])
+    false
+  """
+  @spec after?(Shared.Week.t(), Shared.Week.t()) :: boolean()
+  def after?(%__MODULE__{} = week, %__MODULE__{} = other_week),
+    do: not Shared.Zeitvergleich.frueher_als_oder_zeitgleich?(week, other_week)
 
   @doc ~S"""
   ## Examples:
@@ -364,7 +382,7 @@ defmodule Shared.Week do
   """
   @spec equal_or_earlier_than?(Shared.Week.t(), Shared.Week.t()) :: boolean()
   def equal_or_earlier_than?(%__MODULE__{} = week, %__MODULE__{} = other_week) do
-    week == other_week || earlier_than?(week, other_week)
+    week |> Shared.Zeitvergleich.frueher_als_oder_zeitgleich?(other_week)
   end
 
   @doc ~S"""
@@ -465,11 +483,11 @@ defmodule Shared.Week do
 
   """
   @spec compare(Shared.Week.t(), Shared.Week.t()) :: :lt | :gt | :eq
-  def compare(%__MODULE__{} = week, %__MODULE__{} = other_week) do
+  def compare(%__MODULE__{year: year, week: week}, %__MODULE__{year: other_year, week: other_week}) do
     cond do
-      week == other_week -> :eq
-      week |> earlier_than?(other_week) -> :lt
-      other_week |> earlier_than?(week) -> :gt
+      year == other_year && week == other_week -> :eq
+      year < other_year || (year == other_year && week < other_week) -> :lt
+      year > other_year || (year == other_year && week > other_week) -> :gt
     end
   end
 
