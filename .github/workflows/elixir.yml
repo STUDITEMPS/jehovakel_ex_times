@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
 
       - name: Set up Elixir
-        uses: erlef/setup-beam@1f06ac36d31fecd50acdec4ef7bfd5dc7346f187
+        uses: erlef/setup-beam@207128d04a14e0dbd7f0da5349772fe586181e97
         with:
           elixir-version: ${{ env.ELIXIR_VERSION }}
           otp-version: ${{ env.ERLANG_VERSION }}
