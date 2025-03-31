@@ -1,16 +1,17 @@
 {
-    "name": "jehovakel_ex_times",
     "dockerComposeFile": [
         "../docker-compose.yml",
         "docker-compose.yml"
     ],
     "service": "devcontainer",
-    "workspaceFolder": "/workspace",
-    "remoteEnv": {
-        "HEROKU_API_KEY": "${localEnv:FINOPSTECH_BOT_HEROKU_CLI_TOKEN}"
-    },
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
     "onCreateCommand": ".devcontainer/bin/onCreateCommand",
     "updateContentCommand": ".devcontainer/bin/updateContentCommand",
+    "containerEnv": {
+        "DOPPLER_TOKEN": "${localEnv:DOPPLER_TOKEN}",
+        "DOPPLER_CONFIG": "dev_container",
+        "DOPPLER_PROJECT": "jehovakel_ex_times"
+    },
     "customizations": {
         "codespaces": {
             "repositories": {
