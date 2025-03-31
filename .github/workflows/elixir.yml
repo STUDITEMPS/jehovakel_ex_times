@@ -30,7 +30,7 @@ jobs:
           otp-version: ${{ env.ERLANG_VERSION }}
 
       - name: Restore Elixir dependencies cache
-        uses: actions/cache@58c146cc91c5b9e778e71775dfe9bf1442ad9a12
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
         with:
           path: |
             deps
