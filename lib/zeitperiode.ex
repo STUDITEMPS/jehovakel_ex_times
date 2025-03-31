@@ -15,7 +15,7 @@ defmodule Shared.Zeitperiode do
     von_als_datetime = to_datetime(kalendertag, von)
 
     bis_als_datetime =
-      if Time.before?(von, bis) do
+      if before?(von, bis) do
         to_datetime(kalendertag, bis)
       else
         next_day = Timex.shift(kalendertag, days: 1)
@@ -256,5 +256,11 @@ defmodule Shared.Zeitperiode do
           timezone_info
       end
     end
+  end
+
+  if function_exported?(Time, :before?, 2) do
+    defdelegate before?(a, b), to: Time
+  else
+    def before?(a, b), do: Time.compare(a, b) == :lt
   end
 end
