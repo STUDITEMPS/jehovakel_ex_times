@@ -341,7 +341,7 @@ defmodule Shared.Week do
   Returns true if the week `week` is before the week `other_week`.
   """
   @spec before?(Shared.Week.t(), Shared.Week.t()) :: boolean()
-  defdelegate before?(week, other_week), to: Shared.Zeitvergleich, as: :frueher_alz?
+  defdelegate before?(week, other_week), to: Shared.Zeitvergleich, as: :frueher_als?
 
   @doc ~S"""
   Returns true if the week `week` is after the week `other_week`.
