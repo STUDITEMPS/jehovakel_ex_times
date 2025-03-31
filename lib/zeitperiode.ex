@@ -32,16 +32,21 @@ defmodule Shared.Zeitperiode do
 
     bis = Shared.Zeitperiode.Timezone.convert(bis, base_timezone_name)
 
-    %{offset_std: von_offset} = Shared.Zeitperiode.Timezone.timezone_info_for(von, base_timezone_name)
-    %{offset_std: bis_offset} = Shared.Zeitperiode.Timezone.timezone_info_for(bis, base_timezone_name)
+    %{offset_std: von_offset} =
+      Shared.Zeitperiode.Timezone.timezone_info_for(von, base_timezone_name)
 
-    shift = cond do
-      von_offset == bis_offset -> 0
-      von_offset == 0 -> -bis_offset
-      bis_offset == 0 -> von_offset
-    end
+    %{offset_std: bis_offset} =
+      Shared.Zeitperiode.Timezone.timezone_info_for(bis, base_timezone_name)
+
+    shift =
+      cond do
+        von_offset == bis_offset -> 0
+        von_offset == 0 -> -bis_offset
+        bis_offset == 0 -> von_offset
+      end
 
     von_naive = von |> DateTime.to_naive()
+
     bis_naive =
       bis
       |> DateTime.to_naive()
