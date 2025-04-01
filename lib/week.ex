@@ -442,30 +442,38 @@ defmodule Shared.Week do
 
   # ~w geht nicht, v sieht so ähnlich aus und wir müssen nur nach Skandinavien auswandern
   @spec sigil_v(binary(), keyword()) :: t() | Date.t()
-  def sigil_v(string, opts)
+  defmacro sigil_v(string, opts)
 
-  def sigil_v(
-        <<year::bytes-size(4)>> <>
-          "-W" <>
-          <<week::bytes-size(2)>> <>
-          "-" <> <<weekday::bytes-size(1)>>,
-        []
-      ) do
+  defmacro sigil_v(
+             {:<<>>, _,
+              [
+                <<year::bytes-size(4), "-W", week::bytes-size(2), "-", weekday::bytes-size(1)>>
+              ]},
+             []
+           ) do
     with {:ok, week} <- new(String.to_integer(year), String.to_integer(week)),
          %Date{} = date <- weekday(week, String.to_integer(weekday)) do
-      date
+      Macro.escape(date)
     else
       _ -> raise "Invalid week date"
     end
   end
 
-  def sigil_v(string, []) do
+  defmacro sigil_v({:<<>>, _, [string]}, []) do
     string = string |> String.split("-") |> Enum.join("-W")
 
     with {:ok, week} <- parse(string) do
-      week
+      Macro.escape(week)
     else
       _ -> raise "Invalid week"
+    end
+  end
+
+  defmacro sigil_m({:<<>>, _, [string]}, []) do
+    with {:ok, month} <- parse(string) do
+      Macro.escape(month)
+    else
+      _ -> raise "Invalid month"
     end
   end
 

@@ -413,9 +413,11 @@ defmodule Shared.Month do
     %Month{year: 2018, month: 5}
 
   """
-  def sigil_m(string, []) do
+  defmacro sigil_m(month_string, opts)
+
+  defmacro sigil_m({:<<>>, _, [string]}, []) do
     with {:ok, month} <- parse(string) do
-      month
+      Macro.escape(month)
     else
       _ -> raise "Invalid month"
     end

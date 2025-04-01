@@ -16,6 +16,12 @@ defmodule Shared.MonthTest do
 
   doctest Month
 
+  describe "sigil_m" do
+    test "can be used in matches" do
+      assert ~m[2020-05] = %Month{year: 2020, month: 5}
+    end
+  end
+
   describe "given the fifth month of 2020" do
     test "its string representation is 2020-05" do
       assert to_string(@fifth_month_of_2020) == "2020-05"

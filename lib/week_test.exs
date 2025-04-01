@@ -16,6 +16,13 @@ defmodule Shared.WeekTest do
 
   doctest Week
 
+  describe "sigil_v" do
+    test "can be used in matches" do
+      assert ~v[2022-01] = %Week{year: 2022, week: 1}
+      assert ~v[2025-W01-1] = ~D[2024-12-30]
+    end
+  end
+
   describe "given the fifth week of 2020" do
     test "its string representation is 2020-05" do
       assert to_string(@fifth_week_of_2020) == "2020-W05"
