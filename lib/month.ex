@@ -321,6 +321,17 @@ defmodule Shared.Month do
     end
   end
 
+  @doc """
+  Returns the number of months you need to add to first_month to arrive at second_month.
+  """
+  @spec diff(first_month :: t(), second_month :: t()) :: integer()
+  def diff(%__MODULE__{year: first_year, month: first_month}, %__MODULE__{
+        year: second_year,
+        month: second_month
+      }) do
+    12 * (second_year - first_year) + second_month - first_month
+  end
+
   @doc ~S"""
   ## Examples:
 

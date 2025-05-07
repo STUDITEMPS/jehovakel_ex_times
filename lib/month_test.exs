@@ -74,4 +74,44 @@ defmodule Shared.MonthTest do
       assert ~m[2021-01] |> Shared.Zeitvergleich.frueher_als_oder_zeitgleich?(~m[2021-01])
     end
   end
+
+  describe "diff/2" do
+    test "first month earlier than second month" do
+      first_month = ~m[2025-01]
+      second_month = Month.add(first_month, 3)
+      assert 3 = Month.diff(first_month, second_month)
+    end
+
+    test "first month later than second month" do
+      first_month = ~m[2025-05]
+      second_month = Month.add(first_month, -4)
+      assert -4 = Month.diff(first_month, second_month)
+    end
+
+    test "first month and second month are identical" do
+      month = ~m[2025-01]
+      assert 0 = Month.diff(month, month)
+    end
+
+    test "second month is in previous year" do
+      first_month = ~m[2025-01]
+      second_month = ~m[2024-12]
+
+      assert -1 = Month.diff(first_month, second_month)
+    end
+
+    test "second month is in next year" do
+      first_month = ~m[2025-01]
+      second_month = Month.add(first_month, 16)
+
+      assert 16 = Month.diff(first_month, second_month)
+    end
+
+    test "months are years apart" do
+      first_month = ~m[1993-03]
+      second_month = ~m[2025-04]
+
+      assert 32 * 12 + 1 == Month.diff(first_month, second_month)
+    end
+  end
 end
