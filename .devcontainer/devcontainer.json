@@ -7,11 +7,6 @@
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
     "onCreateCommand": ".devcontainer/bin/onCreateCommand",
     "updateContentCommand": ".devcontainer/bin/updateContentCommand",
-    "containerEnv": {
-        "DOPPLER_TOKEN": "${localEnv:DOPPLER_TOKEN}",
-        "DOPPLER_CONFIG": "dev_container",
-        "DOPPLER_PROJECT": "jehovakel_ex_times"
-    },
     "customizations": {
         "codespaces": {
             "repositories": {
