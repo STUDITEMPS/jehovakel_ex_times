@@ -434,6 +434,16 @@ defmodule Shared.Month do
     end
   end
 
+  defmacro sigil_m(string, []) do
+    quote do
+      with {:ok, month} <- parse(unquote(string)) do
+        month
+      else
+        _ -> raise "Invalid month"
+      end
+    end
+  end
+
   defimpl String.Chars, for: Shared.Month do
     alias Shared.Month
 
