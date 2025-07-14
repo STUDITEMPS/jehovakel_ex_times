@@ -469,11 +469,15 @@ defmodule Shared.Week do
     end
   end
 
-  defmacro sigil_m({:<<>>, _, [string]}, []) do
-    with {:ok, month} <- parse(string) do
-      Macro.escape(month)
-    else
-      _ -> raise "Invalid month"
+  defmacro sigil_v(string, []) do
+    quote do
+      string = unquote(string) |> String.split("-") |> Enum.join("-W")
+
+      with {:ok, week} <- parse(string) do
+        week
+      else
+        _ -> raise "Invalid week"
+      end
     end
   end
 
