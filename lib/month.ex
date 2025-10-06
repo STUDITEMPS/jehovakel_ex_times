@@ -193,6 +193,46 @@ defmodule Shared.Month do
   def next(%__MODULE__{} = month), do: add(month, 1)
   def next(date), do: date |> from_day!() |> add(1)
 
+  @doc """
+  Returns the first month of the year the given struct belongs to.
+
+  ## Example
+
+    iex> Month.beginning_of_year(~m[2018-10])
+    ~m[2018-01]
+
+    iex> Month.beginning_of_year(~U[2024-01-06T00:00:00.000Z])
+    ~m[2024-01]
+
+    iex> Month.beginning_of_year(~N[2024-03-31T23:59:59])
+    ~m[2024-01]
+
+    iex> Month.beginning_of_year(~D[2024-02-01])
+    ~m[2024-01]
+  """
+  @spec beginning_of_year(t() | DateTime.t() | NaiveDateTime.t() | Date.t()) :: t()
+  def beginning_of_year(%{year: year}), do: new!(year, 1)
+
+  @doc """
+  Returns the first month of the year the given struct belongs to.
+
+  ## Example
+
+    iex> Month.end_of_year(~m[2018-10])
+    ~m[2018-12]
+
+    iex> Month.end_of_year(~U[2024-01-06T00:00:00.000Z])
+    ~m[2024-12]
+
+    iex> Month.end_of_year(~N[2024-03-31T23:59:59])
+    ~m[2024-12]
+
+    iex> Month.end_of_year(~D[2024-02-01])
+    ~m[2024-12]
+  """
+  @spec end_of_year(t() | DateTime.t() | NaiveDateTime.t() | Date.t()) :: t()
+  def end_of_year(%{year: year}), do: new!(year, 12)
+
   @doc ~S"""
   ## Examples:
 
