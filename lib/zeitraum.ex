@@ -165,7 +165,7 @@ defmodule Shared.Zeitraum do
   Date.range(~D[2025-01-01], ~D[2025-01-20])
   """
   @spec sigil_Z(String.t(), keyword()) :: t() | no_return()
-  defmacro sigil_Z({:<<>>, context, [string]} = arg, _opts) do
+  defmacro sigil_Z({:<<>>, _context, [string]}, _opts) do
     dates =
       string
       |> String.split("/", parts: 2)
