@@ -417,6 +417,28 @@ defmodule Shared.Month do
     compare(first, from_day!(second))
   end
 
+  @doc """
+  Creates a range of months from start to stop.
+
+  ## Example
+
+      iex> Month.range(@third_month_of_2018, @third_month_of_2019)
+      %Shared.Month.Range{direction: :forward, size: 13, start: ~m[2018-03]}
+  """
+  @spec range(Month.t(), Month.t()) :: Month.Range.t()
+  defdelegate range(start, stop), to: Shared.Month.Range, as: :new
+
+  @doc """
+  Creates a range of months from start to stop in the given direction.
+
+  ## Example
+
+      iex> Month.range(@third_month_of_2019, @third_month_of_2018, :backward)
+      %Shared.Month.Range{direction: :backward, size: 13, start: ~m[2019-03]}
+  """
+  @spec range(t(), t(), Shared.Month.Range.direction()) :: Shared.Month.Range.t()
+  defdelegate range(start, stop, direction), to: Shared.Month.Range, as: :new
+
   @doc ~S"""
   ## Examples
 

@@ -10,6 +10,11 @@ defimpl Shared.ZeitraumProtokoll, for: Shared.Month do
   end
 end
 
+defimpl Shared.ZeitraumProtokoll, for: Shared.Month.Range do
+  def als_intervall(%@for{} = month_range),
+    do: @protocol.als_intervall(@for.to_date_range(month_range))
+end
+
 defimpl Shared.ZeitraumProtokoll, for: Shared.Week do
   def als_intervall(week) do
     {beginns_at, ends_at} = Shared.Week.to_dates(week)
