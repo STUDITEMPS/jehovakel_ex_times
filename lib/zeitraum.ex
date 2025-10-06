@@ -151,4 +151,29 @@ defmodule Shared.Zeitraum do
       [] -> nil
     end
   end
+
+  @sigil_D_context [delimiter: "[", context: Elixir, imports: [{2, Kernel}]]
+
+  @doc """
+  Sigil zur Erstellung von Zeiträumen.
+
+  Unterstützt aktuell nur Daten.
+
+  ## Beispiel
+
+  iex> ~Z[2025-01-01/2025-01-20]
+  Date.range(~D[2025-01-01], ~D[2025-01-20])
+  """
+  @spec sigil_Z(String.t(), keyword()) :: t() | no_return()
+  defmacro sigil_Z({:<<>>, context, [string]} = arg, _opts) do
+    dates =
+      string
+      |> String.split("/", parts: 2)
+      |> Enum.map(&{:<<>>, [], [&1]})
+      |> Enum.map(&{:sigil_D, @sigil_D_context, [&1, []]})
+
+    quote do
+      Date.range(unquote_splicing(dates))
+    end
+  end
 end
