@@ -22,6 +22,11 @@ defimpl Shared.ZeitraumProtokoll, for: Shared.Week do
   end
 end
 
+defimpl Shared.ZeitraumProtokoll, for: Shared.Week.Range do
+  def als_intervall(%@for{} = week_range),
+    do: @protocol.als_intervall(@for.to_date_range(week_range))
+end
+
 defimpl Shared.ZeitraumProtokoll, for: Date do
   def als_intervall(date), do: Shared.Zeitperiode.new(date, date)
 end

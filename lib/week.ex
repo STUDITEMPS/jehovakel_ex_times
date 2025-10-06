@@ -222,6 +222,20 @@ defmodule Shared.Week do
   end
 
   @doc ~S"""
+  Same as &Week.weekday(&1, :sunday)
+
+  ## Examples
+
+    iex> Week.last_day(@third_week_of_2018)
+    %Date{year: 2018, month: 1, day: 21}
+
+  """
+  @spec last_day(Shared.Week.t()) :: Date.t()
+  def last_day(%__MODULE__{year: year, week: week}) do
+    Timex.from_iso_triplet({year, week, 7})
+  end
+
+  @doc ~S"""
   Returns the Date of a week's weekday.
 
   ## Examples
@@ -423,6 +437,28 @@ defmodule Shared.Week do
   def diff(%__MODULE__{} = to_week, %__MODULE__{} = from_week) do
     Integer.floor_div(Date.diff(first_day(to_week), first_day(from_week)), 7)
   end
+
+  @doc """
+  Creates a range of weeks from start to stop.
+
+  ## Example
+
+      iex> Week.range(@third_week_of_2018, @third_week_of_2019)
+      %Shared.Week.Range{direction: :forward, size: 53, start: ~v[2018-03]}
+  """
+  @spec range(t(), t()) :: Week.Range.t()
+  defdelegate range(start, stop), to: Shared.Week.Range, as: :new
+
+  @doc """
+  Creates a range of weeks from start to stop in the given direction.
+
+  ## Example
+
+      iex> Week.range(@third_week_of_2019, @third_week_of_2018, :backward)
+      %Shared.Week.Range{direction: :backward, size: 53, start: ~v[2019-03]}
+  """
+  @spec range(t(), t(), Shared.Week.Range.direction()) :: Shared.Week.Range.t()
+  defdelegate range(start, stop, direction), to: Shared.Week.Range, as: :new
 
   @doc ~S"""
   Returns the Week of the year or Date if a weekday is specified as well

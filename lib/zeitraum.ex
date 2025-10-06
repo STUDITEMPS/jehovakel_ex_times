@@ -152,34 +152,87 @@ defmodule Shared.Zeitraum do
     end
   end
 
-  @sigil_D_context [delimiter: "[", context: Elixir, imports: [{2, Kernel}]]
-
   @doc """
   Sigil zur Erstellung von Zeiträumen.
 
-  Unterstützt aktuell nur Daten.
+  Unterstützt aktuell nur Daten und Monate.
+
+  > [!NOTICE]
+  > Während Date-, Week- & Month-Ranges end inclusive sind (right-closed),
+  > sind NaiveDateTime-Ranges end exclusive (right-open).
 
 
   ## Beispiel
 
-  iex> ~Z[2025-01-01/2025-01-20]
-  Date.range(~D[2025-01-01], ~D[2025-01-20])
+      iex> ~Z[2025-01/2025-02]
+      Shared.Month.range(~m[2025-01], ~m[2025-02])
 
-  Date Ranges laufen _immer_ vorwärts, d.h. mit einem Step von 1.
+      iex> ~Z[2025-01/2025-02]w
+      Shared.Week.range(~v[2025-01], ~v[2025-02])
 
-  iex> ~Z[2025-01-01/2024-12-31]
-  Date.range(~D[2025-01-01], ~D[2024-12-31], 1)
+      iex> ~Z[2025-01-01/2025-01-20]
+      Date.range(~D[2025-01-01], ~D[2025-01-20])
+
+      iex> ~Z[2025-01-01 08:00:00/2025-01-20T16:30:00]
+      Shared.Zeitperiode.new(~N[2025-01-01 08:00:00], ~N[2025-01-20 16:30:00])
+
+  Date Ranges laufen _immer_ vorwärts, d.h. mit einem Step von 1. Damit können
+  sie dann auch leer sein.
+
+      iex> ~Z[2025-01-01/2024-12-31]
+      Date.range(~D[2025-01-01], ~D[2024-12-31], 1)
+
+      iex> Enum.empty?(~Z[2025-01-01/2024-12-31])
+      true
+
   """
   @spec sigil_Z(String.t(), keyword()) :: t() | no_return()
-  defmacro sigil_Z({:<<>>, _context, [string]}, _opts) do
-    dates =
-      string
-      |> String.split("/", parts: 2)
-      |> Enum.map(&{:<<>>, [], [&1]})
-      |> Enum.map(&{:sigil_D, @sigil_D_context, [&1, []]})
+  defmacro sigil_Z({:<<>>, _context, [string]}, flags) do
+    cond do
+      String.match?(string, ~r/\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}/) ->
+        quote do
+          Date.range(unquote_splicing(to_date_sigils(string)), 1)
+        end
 
-    quote do
-      Date.range(unquote_splicing(dates), 1)
+      String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) and ?w in flags ->
+        quote do
+          Shared.Week.range(unquote_splicing(to_week_sigils(string)))
+        end
+
+      String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) ->
+        quote do
+          Shared.Month.range(unquote_splicing(to_month_sigils(string)))
+        end
+
+      String.match?(
+        string,
+        ~r/\d{4}-\d{2}-\d{2}(T| )\d{2}:\d{2}:\d{2}\/\d{4}-\d{2}-\d{2}(T| )\d{2}:\d{2}:\d{2}/
+      ) ->
+        quote do
+          Shared.Zeitperiode.new(unquote_splicing(to_naive_date_time_sigils(string)))
+        end
+
+      :else ->
+        raise ArgumentError, "Invalid format: #{inspect(string)}"
     end
+  end
+
+  @sigil_v_context [delimiter: "[", context: Elixir, imports: [{2, Shared.Week}]]
+  defp to_week_sigils(string), do: to_sigils(string, :sigil_v, @sigil_v_context)
+
+  @sigil_m_context [delimiter: "[", context: Elixir, imports: [{2, Shared.Month}]]
+  defp to_month_sigils(string), do: to_sigils(string, :sigil_m, @sigil_m_context)
+
+  @sigil_D_context [delimiter: "[", context: Elixir, imports: [{2, Kernel}]]
+  defp to_date_sigils(string), do: to_sigils(string, :sigil_D, @sigil_D_context)
+
+  @sigil_N_context [delimiter: "[", context: Elixir, imports: [{2, Kernel}]]
+  defp to_naive_date_time_sigils(string), do: to_sigils(string, :sigil_N, @sigil_N_context)
+
+  defp to_sigils(string, sigil, context) do
+    string
+    |> String.split("/", parts: 2)
+    |> Enum.map(&{:<<>>, [], [&1]})
+    |> Enum.map(&{sigil, context, [&1, []]})
   end
 end

@@ -425,7 +425,7 @@ defmodule Shared.Month do
       iex> Month.range(@third_month_of_2018, @third_month_of_2019)
       %Shared.Month.Range{direction: :forward, size: 13, start: ~m[2018-03]}
   """
-  @spec range(Month.t(), Month.t()) :: Month.Range.t()
+  @spec range(t(), t()) :: Month.Range.t()
   defdelegate range(start, stop), to: Shared.Month.Range, as: :new
 
   @doc """
