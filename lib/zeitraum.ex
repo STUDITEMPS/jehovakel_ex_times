@@ -159,10 +159,16 @@ defmodule Shared.Zeitraum do
 
   Unterstützt aktuell nur Daten.
 
+
   ## Beispiel
 
   iex> ~Z[2025-01-01/2025-01-20]
   Date.range(~D[2025-01-01], ~D[2025-01-20])
+
+  Date Ranges laufen _immer_ vorwärts, d.h. mit einem Step von 1.
+
+  iex> ~Z[2025-01-01/2024-12-31]
+  Date.range(~D[2025-01-01], ~D[2024-12-31], 1)
   """
   @spec sigil_Z(String.t(), keyword()) :: t() | no_return()
   defmacro sigil_Z({:<<>>, _context, [string]}, _opts) do
@@ -173,7 +179,7 @@ defmodule Shared.Zeitraum do
       |> Enum.map(&{:sigil_D, @sigil_D_context, [&1, []]})
 
     quote do
-      Date.range(unquote_splicing(dates))
+      Date.range(unquote_splicing(dates), 1)
     end
   end
 end
