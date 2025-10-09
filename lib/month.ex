@@ -277,11 +277,7 @@ defmodule Shared.Month do
     %Date{year: 2018, month: 3, day: 1}
 
   """
-  def first_day(%__MODULE__{} = month) do
-    {first_day, _} = to_dates(month)
-
-    first_day
-  end
+  def first_day(%__MODULE__{} = month), do: to_date!(month, 1)
 
   @doc ~S"""
   ## Examples
@@ -290,10 +286,7 @@ defmodule Shared.Month do
     %Date{year: 2018, month: 3, day: 31}
 
   """
-  def last_day(%__MODULE__{} = month) do
-    {_, last} = to_dates(month)
-    last
-  end
+  def last_day(%__MODULE__{year: year, month: month}), do: Timex.end_of_month(year, month)
 
   @doc ~S"""
   ## Examples
@@ -302,11 +295,7 @@ defmodule Shared.Month do
     Date.range(~D[2018-03-01], ~D[2018-03-31])
 
   """
-  def to_range(%__MODULE__{} = month) do
-    {first_day, last_day} = to_dates(month)
-
-    Date.range(first_day, last_day)
-  end
+  def to_range(%__MODULE__{} = month), do: Date.range(first_day(month), last_day(month))
 
   @doc ~S"""
   ## Examples
@@ -315,12 +304,7 @@ defmodule Shared.Month do
     {~D[2018-03-01], ~D[2018-03-31]}
 
   """
-  def to_dates(%__MODULE__{year: year, month: month}) do
-    {:ok, first_day} = Date.new(year, month, 1)
-    last_day = Timex.end_of_month(year, month)
-
-    {first_day, last_day}
-  end
+  def to_dates(%__MODULE__{} = month), do: {first_day(month), last_day(month)}
 
   @doc ~S"""
   ## Examples
