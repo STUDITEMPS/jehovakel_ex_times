@@ -325,6 +325,28 @@ defmodule Shared.Month do
   @doc ~S"""
   ## Examples
 
+    iex> Month.to_date(@third_month_of_2018, 1)
+    {:ok, ~D[2018-03-01]}
+
+    iex> Month.to_date(@third_month_of_2018, 32)
+    {:error, :invalid_date}
+
+  """
+  def to_date(%__MODULE__{year: year, month: month}, day) when is_integer(day),
+    do: Date.new(year, month, day)
+
+  @doc ~S"""
+  ## Examples
+
+    iex> Month.to_date!(@third_month_of_2018, 1)
+    ~D[2018-03-01]
+  """
+  def to_date!(%__MODULE__{year: year, month: month}, day) when is_integer(day),
+    do: Date.new!(year, month, day)
+
+  @doc ~S"""
+  ## Examples
+
     iex> Month.add(@third_month_of_2018, 9)
     %Month{year: 2018, month: 12}
 
