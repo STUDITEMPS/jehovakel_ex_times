@@ -153,6 +153,125 @@ defmodule Shared.Zeitraum do
   end
 
   @doc """
+  Testet ob der beginn des ersten Zeitraums vor dem des zweiten liegt.
+
+  ## Beispiel
+
+    iex> beginnt_vor?(~D[2025-01-01], ~D[2025-01-02])
+    true
+
+    iex> beginnt_vor?(~D[2025-01-02], ~D[2025-01-01])
+    false
+
+    iex> beginnt_vor?(~m[2025-01], ~D[2025-01-01])
+    false
+  """
+  @spec beginnt_vor?(t(), t()) :: boolean()
+  def beginnt_vor?(%Timex.Interval{left_open: lo} = a, %Timex.Interval{left_open: lo} = b),
+    do: NaiveDateTime.before?(a.from, b.from)
+
+  def beginnt_vor?(a, b), do: beginnt_vor?(als_intervall(a), als_intervall(b))
+
+  @doc """
+  Testet ob der beginn des ersten Zeitraums nach dem des zweiten liegt.
+
+  ## Beispiel
+
+    iex> beginnt_nach?(~D[2025-01-01], ~D[2025-01-02])
+    false
+
+    iex> beginnt_nach?(~D[2025-01-02], ~D[2025-01-01])
+    true
+
+    iex> beginnt_nach?(~m[2025-01], ~D[2025-01-01])
+    false
+  """
+  @spec beginnt_nach?(t(), t()) :: boolean()
+  def beginnt_nach?(%Timex.Interval{left_open: lo} = a, %Timex.Interval{left_open: lo} = b),
+    do: NaiveDateTime.after?(a.from, b.from)
+
+  def beginnt_nach?(a, b), do: beginnt_nach?(als_intervall(a), als_intervall(b))
+
+  @doc """
+  Testet ob das Ende des ersten Zeitraums vor dem des zweiten liegt.
+
+  ## Beispiel
+
+    iex> endet_vor?(~D[2025-01-01], ~D[2025-01-02])
+    true
+
+    iex> endet_vor?(~D[2025-01-02], ~D[2025-01-01])
+    false
+
+    iex> endet_vor?(~m[2025-01], ~D[2025-01-31])
+    false
+  """
+  @spec endet_vor?(t(), t()) :: boolean()
+  def endet_vor?(%Timex.Interval{right_open: ro} = a, %Timex.Interval{right_open: ro} = b),
+    do: NaiveDateTime.before?(a.until, b.until)
+
+  def endet_vor?(a, b), do: endet_vor?(als_intervall(a), als_intervall(b))
+
+  @doc """
+  Testet ob das Ende des ersten Zeitraums nach dem des zweiten liegt.
+
+  ## Beispiel
+
+    iex> endet_nach?(~D[2025-01-01], ~D[2025-01-02])
+    false
+
+    iex> endet_nach?(~D[2025-01-02], ~D[2025-01-01])
+    true
+
+    iex> endet_nach?(~m[2025-01], ~D[2025-01-31])
+    false
+  """
+  @spec endet_nach?(t(), t()) :: boolean()
+  def endet_nach?(%Timex.Interval{right_open: ro} = a, %Timex.Interval{right_open: ro} = b),
+    do: NaiveDateTime.after?(a.until, b.until)
+
+  def endet_nach?(a, b), do: endet_nach?(als_intervall(a), als_intervall(b))
+
+  @doc """
+  Vergleicht zwei Zeiträume zuerst nach Start und dann nach Ende.
+
+  Kann auch benutzt werden um Zeiträume in einer Liste zu sortieren.
+
+  ## Beispiel
+
+      iex> Enum.sort([
+      ...>   ~m[2025-05],
+      ...>   ~D[2025-05-20],
+      ...>   Shared.Week.from_day!(~D[2025-05-01]),
+      ...>   Shared.Week.from_day!(~D[2025-05-31]),
+      ...>   Date.range(~D[2025-05-19], ~D[2025-05-20])
+      ...> ], Shared.Zeitraum)
+      [~v[2025-18], ~m[2025-05], Date.range(~D[2025-05-19], ~D[2025-05-20]), ~D[2025-05-20], ~v[2025-22]]
+
+  """
+  @spec compare(t(), t()) :: :lt | :eq | :gt
+  def compare(
+        %Timex.Interval{left_open: lo, right_open: ro} = a,
+        %Timex.Interval{left_open: lo, right_open: ro} = b
+      ) do
+    with :eq <- NaiveDateTime.compare(a.from, b.from) do
+      NaiveDateTime.compare(a.until, b.until)
+    end
+  end
+
+  def compare(%Timex.Interval{}, %Timex.Interval{}) do
+    raise ArgumentError, "Cannot compare intervals with different open/closed status"
+  end
+
+  def compare(%type{} = a, %type{} = b) do
+    if function_exported?(type, :compare, 2),
+      do: type.compare(a, b),
+      else: compare(als_intervall(a), als_intervall(b))
+  end
+
+  def compare(a, b), do: compare(als_intervall(a), als_intervall(b))
+
+  @doc """
   Sigil zur Erstellung von Zeiträumen.
 
   Unterstützt aktuell nur Daten und Monate.
@@ -160,7 +279,6 @@ defmodule Shared.Zeitraum do
   > [!NOTICE]
   > Während Date-, Week- & Month-Ranges end inclusive sind (right-closed),
   > sind NaiveDateTime-Ranges end exclusive (right-open).
-
 
   ## Beispiel
 
