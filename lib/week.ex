@@ -207,6 +207,16 @@ defmodule Shared.Week do
     new(String.to_integer(year), String.to_integer(week))
   end
 
+  def parse!(string) do
+    case parse(string) do
+      {:ok, week} ->
+        week
+
+      {:error, :invalid_week_index} ->
+        raise InvalidWeekIndexError, "Invalid week index: #{string}"
+    end
+  end
+
   @doc ~S"""
   Same as &Week.weekday(&1, :monday)
 

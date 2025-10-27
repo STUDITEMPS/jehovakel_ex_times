@@ -25,6 +25,9 @@ defmodule Shared.Zeitperiode do
     to_interval(von_als_datetime, bis_als_datetime)
   end
 
+  def new(%Date{} = von, %Date{} = bis, right_open: true), do: to_interval(von, bis)
+  def new(%Date{} = von, %Date{} = bis, right_open: false), do: new(von, bis)
+
   # Basiszeitzone ist die Zeitzone, in der die Zeit erfasst wurde, aktuell immer Dtl.
   @spec new(DateTime.t(), DateTime.t(), String.t()) :: t
   def new(%DateTime{} = von, %DateTime{} = bis, base_timezone_name) do
@@ -65,12 +68,7 @@ defmodule Shared.Zeitperiode do
   def new(%NaiveDateTime{} = von, %NaiveDateTime{} = bis), do: to_interval(von, bis)
 
   @spec new(von :: Date.t(), bis :: Date.t()) :: t
-  def new(%Date{} = von, %Date{} = bis) do
-    von_als_datetime = to_datetime(von, ~T[00:00:00])
-    bis_als_datetime = bis |> Timex.shift(days: 1) |> to_datetime(~T[00:00:00])
-
-    to_interval(von_als_datetime, bis_als_datetime)
-  end
+  def new(%Date{} = von, %Date{} = bis), do: to_interval(von, Timex.shift(bis, days: 1))
 
   @spec from_interval(interval :: String.t()) :: t
   def from_interval(interval) when is_binary(interval) do
@@ -206,6 +204,7 @@ defmodule Shared.Zeitperiode do
 
   defp truncate(%NaiveDateTime{} = datetime), do: NaiveDateTime.truncate(datetime, :second)
   defp truncate(%DateTime{} = datetime), do: DateTime.truncate(datetime, :second)
+  defp truncate(%Date{} = date), do: date
 
   defp to_interval(von, bis) do
     Timex.Interval.new(

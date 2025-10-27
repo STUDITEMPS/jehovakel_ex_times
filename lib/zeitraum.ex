@@ -277,19 +277,31 @@ defmodule Shared.Zeitraum do
   Unterstützt aktuell nur Daten und Monate.
 
   > [!NOTICE]
-  > Während Date-, Week- & Month-Ranges end inclusive sind (right-closed),
-  > sind NaiveDateTime-Ranges end exclusive (right-open).
+  > Wenn der Range-Modifier (r) angegeben wird, dann werden ggf. Date-, Week- &
+  > Month-Ranges ausgegeben, diese sind end inclusive (right-closed). Ohne
+  > Range-Modifier (r) werden immer Shared.Zeitperiode.t() ausgegeben, diese sind
+  > end exclusive (right-open).
+  > Die Angabe im Sigil selbst ist immer end exclusive.
 
   ## Beispiel
 
-      iex> ~Z[2025-01/2025-02]
+      iex> ~Z[2025-01/2025-03]
+      Shared.Zeitperiode.new(~N[2025-01-01 00:00:00], ~N[2025-03-01 00:00:00])
+
+      iex> ~Z[2025-01/2025-03]r
       Shared.Month.range(~m[2025-01], ~m[2025-02])
 
-      iex> ~Z[2025-01/2025-02]w
-      Shared.Week.range(~v[2025-01], ~v[2025-02])
+      iex> ~Z[2025-W01/2025-W02]
+      Shared.Zeitperiode.new(~N[2024-12-30 00:00:00], ~N[2025-01-06 00:00:00])
+
+      iex> ~Z[2025-W01/2025-W02]r
+      Shared.Week.range(~v[2025-01], ~v[2025-01])
 
       iex> ~Z[2025-01-01/2025-01-20]
-      Date.range(~D[2025-01-01], ~D[2025-01-20])
+      Shared.Zeitperiode.new(~N[2025-01-01 00:00:00], ~N[2025-01-20 00:00:00])
+
+      iex> ~Z[2025-01-01/2025-01-20]r
+      Date.range(~D[2025-01-01], ~D[2025-01-19])
 
       iex> ~Z[2025-01-01 08:00:00/2025-01-20T16:30:00]
       Shared.Zeitperiode.new(~N[2025-01-01 08:00:00], ~N[2025-01-20 16:30:00])
@@ -297,29 +309,59 @@ defmodule Shared.Zeitraum do
   Date Ranges laufen _immer_ vorwärts, d.h. mit einem Step von 1. Damit können
   sie dann auch leer sein.
 
-      iex> ~Z[2025-01-01/2024-12-31]
+      iex> ~Z[2025-01-01/2025-01-01]r
       Date.range(~D[2025-01-01], ~D[2024-12-31], 1)
 
-      iex> Enum.empty?(~Z[2025-01-01/2024-12-31])
+      iex> Enum.empty?(~Z[2025-01-01/2025-01-01]r)
       true
 
   """
   @spec sigil_Z(String.t(), keyword()) :: t() | no_return()
   defmacro sigil_Z({:<<>>, _context, [string]}, flags) do
     cond do
-      String.match?(string, ~r/\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}/) ->
+      String.match?(string, ~r/\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}/) and ?r in flags ->
         quote do
-          Date.range(unquote_splicing(to_date_sigils(string)), 1)
+          [left, right] = unquote(to_date_sigils(string))
+
+          Date.range(left, Date.add(right, -1), 1)
         end
 
-      String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) and ?w in flags ->
+      String.match?(string, ~r/\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}/) ->
         quote do
-          Shared.Week.range(unquote_splicing(to_week_sigils(string)))
+          Shared.Zeitperiode.new(unquote_splicing(to_date_sigils(string)), right_open: true)
+        end
+
+      String.match?(string, ~r/\d{4}-W\d{2}\/\d{4}-W\d{2}/) and ?r in flags ->
+        quote do
+          [left, right] = String.split(unquote(string), "/", parts: 2)
+
+          Shared.Week.range(
+            Shared.Week.parse!(left),
+            Shared.Week.parse!(right) |> Shared.Week.shift(-1)
+          )
+        end
+
+      String.match?(string, ~r/\d{4}-W\d{2}\/\d{4}-W\d{2}/) ->
+        quote do
+          [left, right] = String.split(unquote(string), "/", parts: 2)
+          left_date = Shared.Week.parse!(left) |> Shared.Week.first_day()
+          right_date = Shared.Week.parse!(right) |> Shared.Week.first_day()
+
+          Shared.Zeitperiode.new(left_date, right_date, right_open: true)
+        end
+
+      String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) and ?r in flags ->
+        quote do
+          [left, right] = unquote(to_month_sigils(string))
+          Shared.Month.range(left, Shared.Month.add(right, -1))
         end
 
       String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) ->
         quote do
-          Shared.Month.range(unquote_splicing(to_month_sigils(string)))
+          [left, right] = unquote(to_month_sigils(string))
+          left_date = Shared.Month.first_day(left)
+          right_date = Shared.Month.first_day(right)
+          Shared.Zeitperiode.new(left_date, right_date, right_open: true)
         end
 
       String.match?(
