@@ -62,7 +62,7 @@ defmodule Shared.Month.Range do
 
   def new(%Month{} = start, size), do: new(start, size, :forward)
 
-  @spec new(Month.t(), pos_integer(), direction()) :: t()
+  @spec new(Month.t(), Month.t() | pos_integer(), direction()) :: t()
   def new(_, _, direction) when direction not in [:forward, :backward],
     do: raise(ArgumentError, "Invalid direction: #{inspect(direction)}")
 
