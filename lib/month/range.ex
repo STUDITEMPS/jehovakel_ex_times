@@ -55,7 +55,7 @@ defmodule Shared.Month.Range do
   """
   @spec new(Month.t(), Month.t() | pos_integer()) :: t()
   def new(%Month{} = start, %Month{} = stop) do
-    diff = Month.diff(start, stop)
+    diff = Month.diff(stop, start)
     direction = if diff < 0, do: :backward, else: :forward
     %__MODULE__{start: start, size: abs(diff) + 1, direction: direction}
   end
@@ -67,12 +67,12 @@ defmodule Shared.Month.Range do
     do: raise(ArgumentError, "Invalid direction: #{inspect(direction)}")
 
   def new(%Month{} = start, %Month{} = stop, :forward) do
-    size = max(Month.diff(start, stop) + 1, 0)
+    size = max(Month.diff(stop, start) + 1, 0)
     %__MODULE__{start: start, size: size, direction: :forward}
   end
 
   def new(%Month{} = start, %Month{} = stop, :backward) do
-    size = max(Month.diff(stop, start) + 1, 0)
+    size = max(Month.diff(start, stop) + 1, 0)
     %__MODULE__{start: start, size: size, direction: :backward}
   end
 
@@ -102,7 +102,7 @@ defmodule Shared.Month.Range do
   def earliest(%__MODULE__{start: start, direction: :forward}), do: start
 
   def earliest(%__MODULE__{start: start, direction: :backward, size: size}),
-    do: Month.add(start, (size - 1) * -1)
+    do: Month.shift(start, (size - 1) * -1)
 
   @doc """
   Returns the latest month of the range.
@@ -124,7 +124,7 @@ defmodule Shared.Month.Range do
   def latest(%__MODULE__{start: start, direction: :backward}), do: start
 
   def latest(%__MODULE__{start: start, direction: :forward, size: size}),
-    do: Month.add(start, size - 1)
+    do: Month.shift(start, size - 1)
 
   @doc """
   Converts Month Range to an end-inclusive Date.Range from earliest to latest Month.
@@ -175,7 +175,7 @@ defmodule Shared.Month.Range do
         end
 
       start
-      |> Stream.iterate(&Month.add(&1, step))
+      |> Stream.iterate(&Month.shift(&1, step))
       |> Enum.take(size)
       |> Enumerable.reduce(acc, fun)
     end
@@ -196,8 +196,8 @@ defmodule Shared.Month.Range do
            end
 
          start
-         |> Month.add(start_at)
-         |> Stream.iterate(&Month.add(&1, step))
+         |> Month.shift(start_at)
+         |> Stream.iterate(&Month.shift(&1, step))
          |> Enum.take(amount)
        end}
     end

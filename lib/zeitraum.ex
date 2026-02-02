@@ -353,7 +353,7 @@ defmodule Shared.Zeitraum do
       String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) and ?r in flags ->
         quote do
           [left, right] = unquote(to_month_sigils(string))
-          Shared.Month.range(left, Shared.Month.add(right, -1))
+          Shared.Month.range(left, Shared.Month.shift(right, -1))
         end
 
       String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) ->
@@ -376,9 +376,6 @@ defmodule Shared.Zeitraum do
         raise ArgumentError, "Invalid format: #{inspect(string)}"
     end
   end
-
-  @sigil_v_context [delimiter: "[", context: Elixir, imports: [{2, Shared.Week}]]
-  defp to_week_sigils(string), do: to_sigils(string, :sigil_v, @sigil_v_context)
 
   @sigil_m_context [delimiter: "[", context: Elixir, imports: [{2, Shared.Month}]]
   defp to_month_sigils(string), do: to_sigils(string, :sigil_m, @sigil_m_context)

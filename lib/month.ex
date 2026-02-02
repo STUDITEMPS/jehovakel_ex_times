@@ -1,5 +1,5 @@
 defmodule Shared.Month do
-  defmodule InvalidMonthIndex do
+  defmodule InvalidMonthIndexError do
     defexception [:message]
   end
 
@@ -48,7 +48,7 @@ defmodule Shared.Month do
     %Month{year: 2019, month: 7}
 
     iex> Month.new!(2019, -7)
-    ** (Shared.Month.InvalidMonthIndex) Month must be an integer between 1 and 12, but was -7
+    ** (Shared.Month.InvalidMonthIndexError) Month must be an integer between 1 and 12, but was -7
 
   """
   def new!(year, month) do
@@ -57,7 +57,7 @@ defmodule Shared.Month do
         month
 
       {:error, :invalid_month_index} ->
-        raise InvalidMonthIndex,
+        raise InvalidMonthIndexError,
               "Month must be an integer between 1 and 12, but was " <> inspect(month)
     end
   end
@@ -107,7 +107,7 @@ defmodule Shared.Month do
     %Month{year: 2018, month: 5}
 
     iex> Month.from_day!(%Date{year: 2018, month: 13, day: 17})
-    ** (Shared.Month.InvalidMonthIndex) Month must be an integer between 1 and 12, but was 13
+    ** (Shared.Month.InvalidMonthIndexError) Month must be an integer between 1 and 12, but was 13
 
   """
   @spec from_day!(Date.t() | DateTime.t() | NaiveDateTime.t()) :: t()
@@ -264,6 +264,32 @@ defmodule Shared.Month do
   @doc ~S"""
   ## Examples
 
+    iex> Month.parse!("2019-10")
+    %Month{year: 2019, month: 10}
+
+    iex> Month.parse!("2019-13")
+    ** (Shared.Month.InvalidMonthIndexError) Invalid month index: 2019-13
+
+    iex> Month.parse!("foo")
+    ** (Shared.Month.InvalidMonthIndexError) Invalid month format: foo
+
+  """
+  def parse!(string) do
+    case parse(string) do
+      {:ok, month} ->
+        month
+
+      {:error, :invalid_month_index} ->
+        raise InvalidMonthIndexError, "Invalid month index: #{string}"
+
+      {:error, :invalid_month_format} ->
+        raise InvalidMonthIndexError, "Invalid month format: #{string}"
+    end
+  end
+
+  @doc ~S"""
+  ## Examples
+
     iex> Month.name(@fifth_month_of_2020)
     "Mai"
 
@@ -298,6 +324,31 @@ defmodule Shared.Month do
   def to_range(%__MODULE__{} = month), do: Date.range(first_day(month), last_day(month))
 
   @doc ~S"""
+  Returns an end-exclusive Datetime Interval spanning the whole month.
+
+  ## Examples
+
+    iex> Shared.Month.to_datetime_interval(@third_month_of_2018)
+    %Timex.Interval{
+      from: ~N[2018-03-01 00:00:00],
+      left_open: false,
+      right_open: true,
+      step: [seconds: 1],
+      until: ~N[2018-04-01 00:00:00]
+    }
+
+  """
+  @spec to_datetime_interval(t()) :: Shared.Zeitperiode.t()
+  def to_datetime_interval(%__MODULE__{} = month) do
+    {first_day, last_day} = to_dates(month)
+
+    {:ok, from} = NaiveDateTime.new(first_day, ~T[00:00:00])
+    {:ok, until} = NaiveDateTime.new(Date.add(last_day, 1), ~T[00:00:00])
+
+    Shared.Zeitperiode.new(from, until)
+  end
+
+  @doc ~S"""
   ## Examples
 
     iex> Month.to_dates(@third_month_of_2018)
@@ -329,36 +380,32 @@ defmodule Shared.Month do
     do: Date.new!(year, month, day)
 
   @doc ~S"""
+  Returns the month advanced by the provided number of months from the starting month.
+
   ## Examples
 
-    iex> Month.add(@third_month_of_2018, 9)
+    iex> Month.shift(~m[2020-05], 2)
+    %Month{year: 2020, month: 7}
+
+    iex> Month.shift(~m[2020-05], -5)
+    %Month{year: 2019, month: 12}
+
+    iex> Month.shift(~m[2018-03], 9)
     %Month{year: 2018, month: 12}
 
-    iex> Month.add(@third_month_of_2018, 10)
+    iex> Month.shift(~m[2018-03], 10)
     %Month{year: 2019, month: 1}
 
-    iex> Month.add(@third_month_of_2018, 22)
-    %Month{year: 2020, month: 1}
-
-    iex> Month.add(@third_month_of_2018, -2)
-    %Month{year: 2018, month: 1}
-
-    iex> Month.add(@third_month_of_2018, -3)
-    %Month{year: 2017, month: 12}
-
-    iex> Month.add(@third_month_of_2018, -15)
-    %Month{year: 2016, month: 12}
-
-    iex> Month.add(@third_month_of_2018, 0)
+    iex> Month.shift(~m[2018-03], 0)
     %Month{year: 2018, month: 3}
 
   """
-  @spec add(t(), integer()) :: t()
-  def add(%__MODULE__{} = month, 0), do: month
+  @spec shift(t(), integer()) :: t()
+  def shift(%__MODULE__{} = month, 0), do: month
 
-  def add(%__MODULE__{year: year, month: month}, months_to_add) when is_integer(months_to_add) do
-    new_year = year + div(months_to_add, 12)
-    new_month = month + rem(months_to_add, 12)
+  def shift(%__MODULE__{year: year, month: month}, amount_of_months) when is_integer(amount_of_months) do
+    new_year = year + div(amount_of_months, 12)
+    new_month = month + rem(amount_of_months, 12)
 
     cond do
       new_month > 12 -> new!(new_year + 1, new_month - 12)
@@ -367,44 +414,89 @@ defmodule Shared.Month do
     end
   end
 
-  @doc """
-  Returns the number of months you need to add to first_month to arrive at second_month.
+  @doc ~S"""
+  Deprecated: Use `shift/2` instead.
   """
-  @spec diff(first_month :: t(), second_month :: t()) :: integer()
-  def diff(%__MODULE__{year: first_year, month: first_month}, %__MODULE__{
-        year: second_year,
-        month: second_month
+  @deprecated "Use shift/2 instead"
+  @spec add(t(), integer()) :: t()
+  def add(month, amount), do: shift(month, amount)
+
+  @doc ~S"""
+  Returns the number of months from `from_month` to `to_month`.
+
+  ## Examples
+
+    iex> Month.diff(~m[2025-02], ~m[2025-01])
+    1
+
+    iex> Month.diff(~m[2025-01], ~m[2025-01])
+    0
+
+    iex> Month.diff(~m[2025-01], ~m[2025-02])
+    -1
+
+    iex> Month.diff(~m[2025-01], ~m[2024-01])
+    12
+
+  """
+  @spec diff(to_month :: t(), from_month :: t()) :: integer()
+  def diff(%__MODULE__{year: to_year, month: to_month}, %__MODULE__{
+        year: from_year,
+        month: from_month
       }) do
-    12 * (second_year - first_year) + second_month - first_month
+    12 * (to_year - from_year) + to_month - from_month
   end
 
   @doc ~S"""
+  Returns true if the first month is before the second month.
+
   ## Examples:
 
-    iex> @third_month_of_2018 |> Month.earlier_than?(@third_month_of_2019)
+    iex> Month.before?(~m[2018-03], ~m[2019-03])
     true
 
-    iex> @third_month_of_2018 |> Month.earlier_than?(@third_month_of_2017)
+    iex> Month.before?(~m[2018-03], ~m[2017-03])
     false
 
-    iex> @third_month_of_2018 |> Month.earlier_than?(@fourth_month_of_2018)
+    iex> Month.before?(~m[2018-03], ~m[2018-04])
     true
 
-    iex> @third_month_of_2018 |> Month.earlier_than?(@second_month_of_2019)
-    true
-
-    iex> @third_month_of_2018 |> Month.earlier_than?(@third_month_of_2018)
-    false
-
-    iex> @third_month_of_2018 |> Month.earlier_than?(@second_month_of_2018)
+    iex> Month.before?(~m[2018-03], ~m[2018-03])
     false
 
   """
-  def earlier_than?(%__MODULE__{year: year, month: month}, %__MODULE__{
+  @spec before?(t(), t()) :: boolean()
+  def before?(%__MODULE__{year: year, month: month}, %__MODULE__{
         year: other_year,
         month: other_month
       }) do
     year < other_year || (year == other_year && month < other_month)
+  end
+
+  @doc ~S"""
+  Deprecated: Use `before?/2` instead.
+  """
+  @deprecated "Use before?/2 instead"
+  def earlier_than?(month, other_month), do: before?(month, other_month)
+
+  @doc ~S"""
+  Returns true if the month `month` is after the month `other_month`.
+
+  ## Examples:
+
+    iex> ~m[2025-03] |> Month.after?(~m[2025-01])
+    true
+
+    iex> ~m[2024-12] |> Month.after?(~m[2025-01])
+    false
+
+    iex> ~m[2025-01] |> Month.after?(~m[2025-01])
+    false
+
+  """
+  @spec after?(t(), t()) :: boolean()
+  def after?(%__MODULE__{} = month, %__MODULE__{} = other_month) do
+    not equal_or_earlier_than?(month, other_month)
   end
 
   @doc ~S"""
@@ -430,7 +522,7 @@ defmodule Shared.Month do
 
   """
   def equal_or_earlier_than?(%__MODULE__{} = month, %__MODULE__{} = other_month) do
-    month == other_month || earlier_than?(month, other_month)
+    month == other_month || before?(month, other_month)
   end
 
   @doc ~S"""
@@ -448,7 +540,7 @@ defmodule Shared.Month do
   def compare(%__MODULE__{} = month, month), do: :eq
 
   def compare(%__MODULE__{} = first, %__MODULE__{} = second) do
-    if first |> earlier_than?(second) do
+    if before?(first, second) do
       :lt
     else
       :gt

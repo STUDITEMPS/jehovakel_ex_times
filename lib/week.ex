@@ -335,37 +335,32 @@ defmodule Shared.Week do
   end
 
   @doc ~S"""
+  Returns true if the first week is before the second week.
+
   ## Examples:
 
-    iex> @third_week_of_2018 |> Week.earlier_than?(@third_week_of_2019)
+    iex> Week.before?(~v[2018-03], ~v[2019-03])
     true
 
-    iex> @third_week_of_2018 |> Week.earlier_than?(@third_week_of_2017)
+    iex> Week.before?(~v[2018-03], ~v[2017-03])
     false
 
-    iex> @third_week_of_2018 |> Week.earlier_than?(@fourth_week_of_2018)
+    iex> Week.before?(~v[2018-03], ~v[2018-04])
     true
 
-    iex> @third_week_of_2018 |> Week.earlier_than?(@second_week_of_2019)
-    true
-
-    iex> @third_week_of_2018 |> Week.earlier_than?(@third_week_of_2018)
+    iex> Week.before?(~v[2018-03], ~v[2018-03])
     false
 
-    iex> @third_week_of_2018 |> Week.earlier_than?(@second_week_of_2018)
-    false
-
-  """
-  @spec earlier_than?(Shared.Week.t(), Shared.Week.t()) :: boolean()
-  def earlier_than?(%__MODULE__{} = week, %__MODULE__{} = other_week) do
-    week |> Shared.Zeitvergleich.frueher_als?(other_week)
-  end
-
-  @doc ~S"""
-  Returns true if the week `week` is before the week `other_week`.
   """
   @spec before?(Shared.Week.t(), Shared.Week.t()) :: boolean()
   defdelegate before?(week, other_week), to: Shared.Zeitvergleich, as: :frueher_als?
+
+  @doc ~S"""
+  Deprecated: Use `before?/2` instead.
+  """
+  @deprecated "Use before?/2 instead"
+  @spec earlier_than?(Shared.Week.t(), Shared.Week.t()) :: boolean()
+  def earlier_than?(week, other_week), do: before?(week, other_week)
 
   @doc ~S"""
   Returns true if the week `week` is after the week `other_week`.

@@ -76,42 +76,42 @@ defmodule Shared.MonthTest do
   end
 
   describe "diff/2" do
-    test "first month earlier than second month" do
-      first_month = ~m[2025-01]
-      second_month = Month.add(first_month, 3)
-      assert 3 = Month.diff(first_month, second_month)
+    test "to_month is after from_month" do
+      from_month = ~m[2025-01]
+      to_month = Month.shift(from_month, 3)
+      assert 3 = Month.diff(to_month, from_month)
     end
 
-    test "first month later than second month" do
-      first_month = ~m[2025-05]
-      second_month = Month.add(first_month, -4)
-      assert -4 = Month.diff(first_month, second_month)
+    test "to_month is before from_month" do
+      from_month = ~m[2025-05]
+      to_month = Month.shift(from_month, -4)
+      assert -4 = Month.diff(to_month, from_month)
     end
 
-    test "first month and second month are identical" do
+    test "to_month and from_month are identical" do
       month = ~m[2025-01]
       assert 0 = Month.diff(month, month)
     end
 
-    test "second month is in previous year" do
-      first_month = ~m[2025-01]
-      second_month = ~m[2024-12]
+    test "to_month is in previous year" do
+      from_month = ~m[2025-01]
+      to_month = ~m[2024-12]
 
-      assert -1 = Month.diff(first_month, second_month)
+      assert -1 = Month.diff(to_month, from_month)
     end
 
-    test "second month is in next year" do
-      first_month = ~m[2025-01]
-      second_month = Month.add(first_month, 16)
+    test "to_month is in next year" do
+      from_month = ~m[2025-01]
+      to_month = Month.shift(from_month, 16)
 
-      assert 16 = Month.diff(first_month, second_month)
+      assert 16 = Month.diff(to_month, from_month)
     end
 
     test "months are years apart" do
-      first_month = ~m[1993-03]
-      second_month = ~m[2025-04]
+      from_month = ~m[1993-03]
+      to_month = ~m[2025-04]
 
-      assert 32 * 12 + 1 == Month.diff(first_month, second_month)
+      assert 32 * 12 + 1 == Month.diff(to_month, from_month)
     end
   end
 end
