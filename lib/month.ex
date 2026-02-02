@@ -167,8 +167,8 @@ defmodule Shared.Month do
   @spec previous :: t()
   @spec previous(Date.t() | DateTime.t() | NaiveDateTime.t() | t()) :: t()
   def previous(date \\ Timex.local())
-  def previous(%__MODULE__{} = month), do: add(month, -1)
-  def previous(date), do: date |> from_day!() |> add(-1)
+  def previous(%__MODULE__{} = month), do: shift(month, -1)
+  def previous(date), do: date |> from_day!() |> shift(-1)
 
   @doc """
   Returns the next month based on the given date datetime or month.
@@ -190,8 +190,8 @@ defmodule Shared.Month do
   @spec next :: t()
   @spec next(Date.t() | DateTime.t() | NaiveDateTime.t() | t()) :: t()
   def next(date \\ Timex.local())
-  def next(%__MODULE__{} = month), do: add(month, 1)
-  def next(date), do: date |> from_day!() |> add(1)
+  def next(%__MODULE__{} = month), do: shift(month, 1)
+  def next(date), do: date |> from_day!() |> shift(1)
 
   @doc """
   Returns the first month of the year the given struct belongs to.
