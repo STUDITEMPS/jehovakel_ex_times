@@ -1,0 +1,36 @@
+services:
+  # Update this to the name of the service you want to work with in your docker-compose.yml file
+  devcontainer:
+    image: ghcr.io/studitemps/devcontainer-base:date-2025-11-24
+
+    network_mode: "host"
+
+    volumes:
+      # Update this to wherever you want VS Code to mount the folder of your project
+      - ../../..:/workspaces:cached
+      # Uncomment the next line to use Docker from inside the container. See https://aka.ms/vscode-remote/samples/docker-from-docker-compose for details.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Store command history persistently
+      - commandhistory:/commandhistory
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+  rabbitmq:
+    # https://hub.docker.com/_/rabbitmq/
+    image: rabbitmq:3.10.8
+    ports:
+      - "127.0.0.1:5672:5672"       # publish to host loopback only
+      - "127.0.0.1:15672:15672"       # publish to host loopback only
+
+  postgres:
+    # https://hub.docker.com/_/postgres/
+    image: postgres:15.6
+    ports:
+      - "127.0.0.1:5432:5432"       # publish to host loopback only
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+volumes:
+  commandhistory:
