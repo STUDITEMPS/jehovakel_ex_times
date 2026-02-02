@@ -33,6 +33,27 @@ defmodule Shared.ZeitTest do
              |> Timex.to_datetime("Etc/UTC")
              |> entspricht_timestamp?("2018-10-03T10:20:42Z")
     end
+
+    test "parse date-only string" do
+      assert Zeit.parse("2025-01-15") == ~N[2025-01-15 00:00:00]
+    end
+
+    test "parse date-only string at year boundary" do
+      assert Zeit.parse("2024-12-31") == ~N[2024-12-31 00:00:00]
+      assert Zeit.parse("2025-01-01") == ~N[2025-01-01 00:00:00]
+    end
+
+    test "parse invalid date raises ArgumentError" do
+      assert_raise ArgumentError, ~r/Invalid date\/time format/, fn ->
+        Zeit.parse("not-a-date")
+      end
+    end
+
+    test "parse invalid date with wrong month raises ArgumentError" do
+      assert_raise ArgumentError, ~r/Invalid date\/time format/, fn ->
+        Zeit.parse("2025-13-01")
+      end
+    end
   end
 
   describe "jetzt/0" do

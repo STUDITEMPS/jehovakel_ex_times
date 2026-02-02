@@ -378,6 +378,31 @@ defmodule Shared.ZeitperiodeTest do
       assert Periode.parse("2019-04-16T23:30:00+02:00--2019-04-16T23:45:00+02:00")
              |> entspricht_intervall?("2019-04-16T23:30:00+02:00/2019-04-16T23:45:00+02:00")
     end
+
+    test "parse date-only interval with slash separator" do
+      assert [start: ~N[2025-01-01 00:00:00], ende: ~N[2025-01-02 00:00:00]] =
+               Periode.parse("2025-01-01/2025-01-02")
+    end
+
+    test "parse date-only interval with double-dash separator" do
+      assert [start: ~N[2025-01-01 00:00:00], ende: ~N[2025-01-02 00:00:00]] =
+               Periode.parse("2025-01-01--2025-01-02")
+    end
+
+    test "parse date-only interval spanning months" do
+      assert [start: ~N[2025-01-15 00:00:00], ende: ~N[2025-02-15 00:00:00]] =
+               Periode.parse("2025-01-15/2025-02-15")
+    end
+
+    test "parse date-only interval spanning years" do
+      assert [start: ~N[2024-12-31 00:00:00], ende: ~N[2025-01-01 00:00:00]] =
+               Periode.parse("2024-12-31/2025-01-01")
+    end
+
+    test "parse single day interval" do
+      assert [start: ~N[2025-03-15 00:00:00], ende: ~N[2025-03-15 00:00:00]] =
+               Periode.parse("2025-03-15/2025-03-15")
+    end
   end
 
   describe "to_iso8601/1" do

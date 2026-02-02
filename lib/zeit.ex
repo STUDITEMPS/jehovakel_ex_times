@@ -64,6 +64,12 @@ defmodule Shared.Zeit do
 
       {:ok, %NaiveDateTime{} = naive_date_time} ->
         naive_date_time
+
+      {:error, _} ->
+        case Date.from_iso8601(to_parse) do
+          {:ok, date} -> NaiveDateTime.new!(date, ~T[00:00:00])
+          {:error, reason} -> raise ArgumentError, "Invalid date/time format: #{reason}"
+        end
     end
   end
 
