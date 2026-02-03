@@ -153,6 +153,86 @@ defmodule Shared.Zeitraum do
   end
 
   @doc """
+  Bildet die Vereinigung zweier Zeiträume.
+
+  Sollten diese nicht überlappen werden beide als tuple zurückgegeben.
+
+  ## Beispiel
+
+  iex> vereinigung(~v[2025-05], ~m[2025-01])
+  %Timex.Interval{from: ~N[2025-01-01 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]}
+
+  iex> vereinigung(~v[2025-05], ~v[2025-04])
+  %Timex.Interval{from: ~N[2025-01-20 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]}
+
+  iex> vereinigung(~v[2025-05], ~v[2025-03])
+  {%Timex.Interval{from: ~N[2025-01-27 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]},
+    %Timex.Interval{from: ~N[2025-01-13 00:00:00], until: ~N[2025-01-20 00:00:00], step: [seconds: 1]}}
+  """
+  @spec vereinigung(t(), t()) :: t() | {t(), t()}
+  def vereinigung(a, b) do
+    intervall_a = als_intervall(a)
+    intervall_b = als_intervall(b)
+
+    if ueberschneidung?(intervall_a, intervall_b) or grenzen_aneinander?(intervall_a, intervall_b) do
+      from = Enum.min([intervall_a.from, intervall_b.from], NaiveDateTime)
+      until = Enum.max([intervall_a.until, intervall_b.until], NaiveDateTime)
+
+      Timex.Interval.new(from: from, until: until, step: [seconds: 1])
+    else
+      {intervall_a, intervall_b}
+    end
+  end
+
+  @doc """
+  Bildet die Vereinigung aller Zeiträume.
+
+  Gibt eine Liste nicht überlappender Zeiträume zurück.
+
+  ## Beispiel
+
+  iex> vereinigung([~v[2025-05], ~m[2025-01]])
+  [%Timex.Interval{from: ~N[2025-01-01 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]}]
+
+  iex> vereinigung([~v[2025-05], ~v[2025-04]])
+  [%Timex.Interval{from: ~N[2025-01-20 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]}]
+
+  iex> vereinigung([~v[2025-05], ~v[2025-03]])
+  [%Timex.Interval{from: ~N[2025-01-13 00:00:00], until: ~N[2025-01-20 00:00:00], step: [seconds: 1]},
+    %Timex.Interval{from: ~N[2025-01-27 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]}]
+
+  iex> vereinigung([~D[2025-01-01], ~D[2025-01-02], ~D[2025-01-07], ~D[2025-01-02], ~D[2025-01-05], ~v[2025-01]])
+  [%Timex.Interval{from: ~N[2024-12-30 00:00:00], until: ~N[2025-01-06 00:00:00], step: [seconds: 1]},
+    %Timex.Interval{from: ~N[2025-01-07 00:00:00], until: ~N[2025-01-08 00:00:00], step: [seconds: 1]}]
+
+  """
+  @spec vereinigung([t()]) :: [t()]
+  def vereinigung(intervalle) do
+    intervalle
+    |> Enum.map(&als_intervall/1)
+    |> Enum.sort(__MODULE__)
+    |> vereinige_sortierte_intervalle()
+  end
+
+  defp vereinige_sortierte_intervalle([]), do: []
+  defp vereinige_sortierte_intervalle([einzelnes]), do: [einzelnes]
+
+  defp vereinige_sortierte_intervalle([erstes, zweites | rest]) do
+    case vereinigung(erstes, zweites) do
+      %Timex.Interval{} = vereinigtes ->
+        vereinige_sortierte_intervalle([vereinigtes | rest])
+
+      {_erstes, _zweites} ->
+        [erstes | vereinige_sortierte_intervalle([zweites | rest])]
+    end
+  end
+
+  defp grenzen_aneinander?(intervall_a, intervall_b) do
+    NaiveDateTime.compare(intervall_a.until, intervall_b.from) == :eq or
+      NaiveDateTime.compare(intervall_b.until, intervall_a.from) == :eq
+  end
+
+  @doc """
   Testet ob der beginn des ersten Zeitraums vor dem des zweiten liegt.
 
   ## Beispiel
