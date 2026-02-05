@@ -8,6 +8,7 @@ defmodule JehovakelExTimes.MixProject do
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      consolidate_protocols: Mix.env() != :test,
       test_paths: ["lib"],
       test_coverage: [tool: ExCoveralls],
       deps: deps(),

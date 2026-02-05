@@ -1,6 +1,30 @@
 defprotocol Shared.ZeitraumProtokoll do
   @spec als_intervall(t) :: Timex.Interval.t()
   def als_intervall(zeitraum)
+
+  @impl true
+  defmacro __deriving__(module, options) do
+    if zeitraum_key = Keyword.get(options, :zeitraum) do
+      quote do
+        defimpl Shared.ZeitraumProtokoll, for: unquote(module) do
+          def als_intervall(zeitraum), do: Map.fetch!(zeitraum, unquote(zeitraum_key))
+        end
+      end
+    else
+      start_key = Keyword.get(options, :start, :start)
+      end_key = Keyword.get(options, :ende, :ende)
+
+      quote do
+        defimpl Shared.ZeitraumProtokoll, for: unquote(module) do
+          def als_intervall(zeitraum) do
+            start = Map.fetch!(zeitraum, unquote(start_key))
+            ende = Map.fetch!(zeitraum, unquote(end_key))
+            Shared.Zeitperiode.new(start, ende)
+          end
+        end
+      end
+    end
+  end
 end
 
 defimpl Shared.ZeitraumProtokoll, for: Shared.Month do
