@@ -22,6 +22,59 @@ defmodule Shared.Zeitraum do
   @spec als_intervall(t()) :: Timex.Interval.t()
   defdelegate als_intervall(zeitraum), to: ZeitraumProtokoll
 
+  @type als_daterange_opts :: [truncate_from: boolean, truncate_until: boolean]
+  @spec als_daterange(t(), als_daterange_opts()) :: Date.Range.t()
+  @doc """
+  Konvertiert einen `t:Shared.Zeitraum.t/0` in einen `t:Date.Range.t/0`.
+
+  ## Beispiel:
+
+    iex> als_daterange(~Z[2025-01-01/2025-01-03])
+    Date.range(~D[2025-01-01], ~D[2025-01-03])
+
+    iex> als_daterange(~Z[2025-01-01 12:00:00/2025-01-03 00:00:00])
+    Date.range(~D[2025-01-02], ~D[2025-01-02])
+
+    iex> als_daterange(~Z[2025-01-01 00:00:00/2025-01-03 12:00:00])
+    Date.range(~D[2025-01-01], ~D[2025-01-02])
+
+    iex> als_daterange(~Z[2025-01-01 00:00:00/2025-01-03 12:00:00], truncate_until: false)
+    Date.range(~D[2025-01-01], ~D[2025-01-03])
+
+    iex> als_daterange(~Z[2025-01-01 12:00:00/2025-01-03 12:00:00])
+    Date.range(~D[2025-01-02], ~D[2025-01-02])
+
+    iex > als_daterange(~Z[2025-01-01 12:00:00/2025-01-03 12:00:00], truncate_from: false)
+    Date.range(~D[2025-01-01], ~D[2025-01-02])
+  """
+  def als_daterange(%Date.Range{} = zeitraum), do: zeitraum
+
+  def als_daterange(zeitraum, opts \\ []) do
+    intervall = als_intervall(zeitraum)
+    from = NaiveDateTime.to_date(intervall.from)
+    until = NaiveDateTime.to_date(intervall.until)
+
+    date_only_range =
+      Map.get(intervall, :right_open, false) == true and
+        ~T[00:00:00] == NaiveDateTime.to_time(intervall.from) and
+        ~T[00:00:00] == NaiveDateTime.to_time(intervall.until)
+
+    truncate_from = Keyword.get(opts, :truncate_from, true)
+    truncate_until = !date_only_range or Keyword.get(opts, :truncate_until, true)
+
+    from =
+      if truncate_from and ~T[00:00:00] != NaiveDateTime.to_time(intervall.from),
+        do: Date.add(from, 1),
+        else: from
+
+    until =
+      if truncate_until and ~T[00:00:00] == NaiveDateTime.to_time(intervall.until),
+        do: Date.add(until, -1),
+        else: until
+
+    Date.range(from, until)
+  end
+
   @doc """
   Berechnet die Dauer eines Zeitraums.
 
