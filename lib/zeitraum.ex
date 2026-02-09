@@ -30,49 +30,58 @@ defmodule Shared.Zeitraum do
   ## Beispiel:
 
     iex> als_daterange(~Z[2025-01-01/2025-01-03])
-    Date.range(~D[2025-01-01], ~D[2025-01-03])
+    Date.range(~D[2025-01-01], ~D[2025-01-02])
 
-    iex> als_daterange(~Z[2025-01-01 12:00:00/2025-01-03 00:00:00])
-    Date.range(~D[2025-01-02], ~D[2025-01-02])
+    iex> als_daterange(~Z[2025-01-01 00:00:00/2025-01-03 00:00:00])
+    Date.range(~D[2025-01-01], ~D[2025-01-02])
 
     iex> als_daterange(~Z[2025-01-01 00:00:00/2025-01-03 12:00:00])
     Date.range(~D[2025-01-01], ~D[2025-01-02])
 
-    iex> als_daterange(~Z[2025-01-01 00:00:00/2025-01-03 12:00:00], truncate_until: false)
-    Date.range(~D[2025-01-01], ~D[2025-01-03])
+    iex> als_daterange(~Z[2025-01-01 12:00:00/2025-01-03 00:00:00])
+    Date.range(~D[2025-01-02], ~D[2025-01-02])
 
     iex> als_daterange(~Z[2025-01-01 12:00:00/2025-01-03 12:00:00])
     Date.range(~D[2025-01-02], ~D[2025-01-02])
 
+    iex> als_daterange(~Z[2025-01-01 00:00:00/2025-01-03 12:00:00], truncate_until: false)
+    Date.range(~D[2025-01-01], ~D[2025-01-03])
+
     iex > als_daterange(~Z[2025-01-01 12:00:00/2025-01-03 12:00:00], truncate_from: false)
     Date.range(~D[2025-01-01], ~D[2025-01-02])
+
+    iex> als_daterange(~Z[2025-01-01 12:00:00/2025-01-01 13:00:00], truncate_from: false, truncate_until: false)
+    Date.range(~D[2025-01-01], ~D[2025-01-01])
+
+    iex> als_daterange(~Z[2025-01-01 00:00:00/2025-01-01 12:00:00]) |> Enum.empty?()
+    true
+
+    iex> als_daterange(~Z[2025-01-01 10:00:00/2025-01-02 12:00:00]) |> Enum.empty?()
+    true
   """
   def als_daterange(%Date.Range{} = zeitraum), do: zeitraum
 
   def als_daterange(zeitraum, opts \\ []) do
     intervall = als_intervall(zeitraum)
-    from = NaiveDateTime.to_date(intervall.from)
-    until = NaiveDateTime.to_date(intervall.until)
 
-    date_only_range =
-      Map.get(intervall, :right_open, false) == true and
-        ~T[00:00:00] == NaiveDateTime.to_time(intervall.from) and
-        ~T[00:00:00] == NaiveDateTime.to_time(intervall.until)
+    from_date = NaiveDateTime.to_date(intervall.from)
+    until_date = NaiveDateTime.to_date(intervall.until)
+
+    from_time = NaiveDateTime.to_time(intervall.from)
+    until_time = NaiveDateTime.to_time(intervall.until)
 
     truncate_from = Keyword.get(opts, :truncate_from, true)
-    truncate_until = !date_only_range or Keyword.get(opts, :truncate_until, true)
+    truncate_until = Keyword.get(opts, :truncate_until, true)
 
     from =
-      if truncate_from and ~T[00:00:00] != NaiveDateTime.to_time(intervall.from),
-        do: Date.add(from, 1),
-        else: from
+      if truncate_from and from_time != ~T[00:00:00], do: Date.add(from_date, 1), else: from_date
 
     until =
-      if truncate_until and ~T[00:00:00] == NaiveDateTime.to_time(intervall.until),
-        do: Date.add(until, -1),
-        else: until
+      if truncate_until or until_time == ~T[00:00:00],
+        do: Date.add(until_date, -1),
+        else: until_date
 
-    Date.range(from, until)
+    Date.range(from, until, 1)
   end
 
   @doc """
