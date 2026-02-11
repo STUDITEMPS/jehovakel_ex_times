@@ -26,51 +26,62 @@ defmodule Shared.Zeitraum.Ueberlagerung do
   end
 
   def aus_zeitraeumen(zeitraeume) do
+    # Events: {sort_key, :end/:start, ndt, element}
+    # :end < :start alphabetisch → :end wird bei gleichem Zeitpunkt zuerst verarbeitet
+    # Akkumulator: {abschnitte, aktive, {prev_sort_key, prev_ndt} | nil}
     {abschnitte, [], _} =
       zeitraeume
-      |> Stream.flat_map(&zu_grenzen/1)
-      |> Enum.sort(&grenze_vor?/2)
+      |> Enum.flat_map(&zu_grenzen/1)
+      |> Enum.sort()
       |> Enum.reduce({[], [], nil}, fn
-        # Neuer Zeitpunkt ohne aktive Elemente: keinen Abschnitt emittieren
-        {zeit, :start, el}, {abschnitte, [], _prev_zeit} ->
-          {abschnitte, [el], zeit}
+        # Neuer Zeitpunkt ohne aktive Elemente
+        {key, :start, ndt, el}, {abschnitte, [], _} ->
+          {abschnitte, [el], {key, ndt}}
 
-        # Gleicher Zeitpunkt: keinen Abschnitt emittieren
-        {zeit, :start, el}, {abschnitte, aktiv, zeit} ->
-          {abschnitte, [el | aktiv], zeit}
+        # Gleicher Zeitpunkt
+        {key, :start, _, el}, {abschnitte, aktiv, {key, _} = prev} ->
+          {abschnitte, [el | aktiv], prev}
 
-        {zeit, :end, el}, {abschnitte, aktiv, zeit} ->
-          {abschnitte, List.delete(aktiv, el), zeit}
+        {key, :end, _, el}, {abschnitte, aktiv, {key, _} = prev} ->
+          {abschnitte, List.delete(aktiv, el), prev}
 
-        # Neuer Zeitpunkt mit aktiven Elementen: Abschnitt emittieren
-        {zeit, :start, el}, {abschnitte, [_ | _] = aktiv, prev_zeit} ->
-          {[ueberlagerung(prev_zeit, zeit, aktiv) | abschnitte], [el | aktiv], zeit}
+        # Neuer Zeitpunkt mit aktiven Elementen → Abschnitt emittieren
+        {key, :start, ndt, el}, {abschnitte, [_ | _] = aktiv, {_, prev_ndt}} ->
+          {[abschnitt(prev_ndt, ndt, aktiv) | abschnitte], [el | aktiv], {key, ndt}}
 
-        {zeit, :end, el}, {abschnitte, [_ | _] = aktiv, prev_zeit} ->
-          {[ueberlagerung(prev_zeit, zeit, aktiv) | abschnitte], List.delete(aktiv, el), zeit}
+        {key, :end, ndt, el}, {abschnitte, [_ | _] = aktiv, {_, prev_ndt}} ->
+          {[abschnitt(prev_ndt, ndt, aktiv) | abschnitte], List.delete(aktiv, el), {key, ndt}}
       end)
 
     Enum.reverse(abschnitte)
   end
 
-  defp ueberlagerung(von, bis, aktive) do
+  defp abschnitt(von, bis, aktive) do
     %__MODULE__{
-      zeitraum: Timex.Interval.new(from: von, until: bis, step: [seconds: 1]),
+      zeitraum: %Timex.Interval{from: von, until: bis, step: [seconds: 1], left_open: false, right_open: true},
       elemente: aktive
     }
   end
 
   defp zu_grenzen(zeitraum) do
     intervall = Zeitraum.als_intervall(zeitraum)
-    [{intervall.from, :start, zeitraum}, {intervall.until, :end, zeitraum}]
+
+    [
+      {sort_key(intervall.from), :start, intervall.from, zeitraum},
+      {sort_key(intervall.until), :end, intervall.until, zeitraum}
+    ]
   end
 
-  defp grenze_vor?({zeit1, event1, _}, {zeit2, event2, _}) do
-    case NaiveDateTime.compare(zeit1, zeit2) do
-      :lt -> true
-      :gt -> false
-      :eq -> event1 <= event2
-    end
+  defp sort_key(%NaiveDateTime{
+         year: y,
+         month: m,
+         day: d,
+         hour: h,
+         minute: min,
+         second: s,
+         microsecond: {us, _}
+       }) do
+    {y, m, d, h, min, s, us}
   end
 
   defimpl Shared.ZeitraumProtokoll do
