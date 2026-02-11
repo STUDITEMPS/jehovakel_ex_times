@@ -10,6 +10,7 @@ defmodule Shared.Zeitraum do
 
   alias Shared.ZeitraumProtokoll
   alias Shared.Zeitraum.Ueberlagerung
+  alias Shared.Zeitraum.Vereinigung
 
   @type t :: ZeitraumProtokoll.t()
 
@@ -269,16 +270,9 @@ defmodule Shared.Zeitraum do
   """
   @spec vereinigung(t(), t()) :: t() | {t(), t()}
   def vereinigung(a, b) do
-    intervall_a = als_intervall(a)
-    intervall_b = als_intervall(b)
-
-    if ueberschneidung?(intervall_a, intervall_b) or grenzen_aneinander?(intervall_a, intervall_b) do
-      from = Enum.min([intervall_a.from, intervall_b.from], NaiveDateTime)
-      until = Enum.max([intervall_a.until, intervall_b.until], NaiveDateTime)
-
-      Timex.Interval.new(from: from, until: until, step: [seconds: 1])
-    else
-      {intervall_a, intervall_b}
+    case vereinigung([a, b]) do
+      [a, b] -> {a, b}
+      [c] -> c
     end
   end
 
@@ -305,30 +299,7 @@ defmodule Shared.Zeitraum do
 
   """
   @spec vereinigung([t()]) :: [t()]
-  def vereinigung(intervalle) do
-    intervalle
-    |> Enum.map(&als_intervall/1)
-    |> Enum.sort(__MODULE__)
-    |> vereinige_sortierte_intervalle()
-  end
-
-  defp vereinige_sortierte_intervalle([]), do: []
-  defp vereinige_sortierte_intervalle([einzelnes]), do: [einzelnes]
-
-  defp vereinige_sortierte_intervalle([erstes, zweites | rest]) do
-    case vereinigung(erstes, zweites) do
-      %Timex.Interval{} = vereinigtes ->
-        vereinige_sortierte_intervalle([vereinigtes | rest])
-
-      {_erstes, _zweites} ->
-        [erstes | vereinige_sortierte_intervalle([zweites | rest])]
-    end
-  end
-
-  defp grenzen_aneinander?(intervall_a, intervall_b) do
-    NaiveDateTime.compare(intervall_a.until, intervall_b.from) == :eq or
-      NaiveDateTime.compare(intervall_b.until, intervall_a.from) == :eq
-  end
+  defdelegate vereinigung(zeitraeume), to: Vereinigung, as: :aus_zeitraeumen
 
   @doc """
   Testet ob der beginn des ersten Zeitraums vor dem des zweiten liegt.
