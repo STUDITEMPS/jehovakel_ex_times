@@ -9,6 +9,7 @@ defmodule Shared.Zeitraum do
   """
 
   alias Shared.ZeitraumProtokoll
+  alias Shared.Zeitraum.Ueberlagerung
 
   @type t :: ZeitraumProtokoll.t()
 
@@ -182,6 +183,67 @@ defmodule Shared.Zeitraum do
       ZeitraumProtokoll.als_intervall(basis_intervall),
       ZeitraumProtokoll.als_intervall(abzuziehendes_intervall)
     )
+  end
+
+  @doc """
+  Überlagert eine Liste von Zeiträumen zu einer überschneidungsfreien Partition.
+
+  Nimmt eine Liste von Zeiträumen (beliebige Typen die `t:Shared.ZeitraumProtokoll.t/0`
+  implementieren) und erzeugt eine Liste von `t:Ueberlagerung.t/0` Structs, in der sich
+  keine Zeiträume mehr überschneiden. Jede Überlagerung enthält die Liste der ursprünglichen
+  Elemente, die den jeweiligen Abschnitt überdecken.
+
+  Die resultierenden Überlagerungen implementieren selbst das `t:Shared.ZeitraumProtokoll.t/0`
+  und können direkt mit `differenz/2`, `ueberschneidung/2`, etc. verwendet werden.
+
+  ## Beispiel
+
+  Nicht überlappende Zeiträume bleiben getrennt:
+
+      iex> ergebnis = ueberlagere([~D[2025-01-01], ~D[2025-01-03]])
+      [
+        %Ueberlagerung{zeitraum: ~Z[2025-01-01 00:00:00/2025-01-02 00:00:00], elemente: [~D[2025-01-01]]},
+        %Ueberlagerung{zeitraum: ~Z[2025-01-03 00:00:00/2025-01-04 00:00:00], elemente: [~D[2025-01-03]]},
+      ]
+      iex> Enum.all?(ergebnis, &match?(%{elemente: [_]}, &1))
+      true
+
+  Überlappende Zeiträume werden aufgeteilt. Die Überlappung enthält beide Elemente:
+
+      iex> mo_bis_mi = ~Z[2025-01-06/2025-01-09]
+      iex> di_bis_do = ~Z[2025-01-07/2025-01-10]
+      iex> ueberlagere([mo_bis_mi, di_bis_do]) |> Enum.sort_by(& &1.zeitraum.from)
+      [
+        %Ueberlagerung{zeitraum: ~Z[2025-01-06/2025-01-07], elemente: [~Z[2025-01-06/2025-01-09]]},
+        %Ueberlagerung{zeitraum: ~Z[2025-01-07/2025-01-09], elemente: [~Z[2025-01-06/2025-01-09], ~Z[2025-01-07/2025-01-10]]},
+        %Ueberlagerung{zeitraum: ~Z[2025-01-09/2025-01-10], elemente: [~Z[2025-01-07/2025-01-10]]},
+      ]
+  """
+  @spec ueberlagere(list(t())) :: list(Ueberlagerung.t())
+  def ueberlagere(zeitraeume) do
+    Enum.reduce(zeitraeume, [], fn neuer_zeitraum, bestehende ->
+      ueberschneidungen =
+        for %Ueberlagerung{} = bestehend <- bestehende,
+            ueberschneidung = ueberschneidung(bestehend, neuer_zeitraum) do
+          %Ueberlagerung{
+            zeitraum: als_intervall(ueberschneidung),
+            elemente: bestehend.elemente ++ [neuer_zeitraum]
+          }
+        end
+
+      unveraenderte =
+        for %Ueberlagerung{} = bestehend <- bestehende,
+            rest <- differenz(bestehend, ueberschneidungen) do
+          %Ueberlagerung{zeitraum: als_intervall(rest), elemente: bestehend.elemente}
+        end
+
+      neue =
+        neuer_zeitraum
+        |> differenz(ueberschneidungen)
+        |> Enum.map(&%Ueberlagerung{zeitraum: als_intervall(&1), elemente: [neuer_zeitraum]})
+
+      unveraenderte ++ ueberschneidungen ++ neue
+    end)
   end
 
   @doc """
