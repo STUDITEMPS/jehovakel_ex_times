@@ -205,8 +205,6 @@ defmodule Shared.Zeitraum do
         %Ueberlagerung{zeitraum: ~Z[2025-01-01 00:00:00/2025-01-02 00:00:00], elemente: [~D[2025-01-01]]},
         %Ueberlagerung{zeitraum: ~Z[2025-01-03 00:00:00/2025-01-04 00:00:00], elemente: [~D[2025-01-03]]},
       ]
-      iex> Enum.all?(ergebnis, &match?(%{elemente: [_]}, &1))
-      true
 
   Überlappende Zeiträume werden aufgeteilt. Die Überlappung enthält beide Elemente:
 
@@ -215,36 +213,12 @@ defmodule Shared.Zeitraum do
       iex> ueberlagere([mo_bis_mi, di_bis_do]) |> Enum.sort_by(& &1.zeitraum.from)
       [
         %Ueberlagerung{zeitraum: ~Z[2025-01-06/2025-01-07], elemente: [~Z[2025-01-06/2025-01-09]]},
-        %Ueberlagerung{zeitraum: ~Z[2025-01-07/2025-01-09], elemente: [~Z[2025-01-06/2025-01-09], ~Z[2025-01-07/2025-01-10]]},
+        %Ueberlagerung{zeitraum: ~Z[2025-01-07/2025-01-09], elemente: [~Z[2025-01-07/2025-01-10], ~Z[2025-01-06/2025-01-09]]},
         %Ueberlagerung{zeitraum: ~Z[2025-01-09/2025-01-10], elemente: [~Z[2025-01-07/2025-01-10]]},
       ]
   """
   @spec ueberlagere(list(t())) :: list(Ueberlagerung.t())
-  def ueberlagere(zeitraeume) do
-    Enum.reduce(zeitraeume, [], fn neuer_zeitraum, bestehende ->
-      ueberschneidungen =
-        for %Ueberlagerung{} = bestehend <- bestehende,
-            ueberschneidung = ueberschneidung(bestehend, neuer_zeitraum) do
-          %Ueberlagerung{
-            zeitraum: als_intervall(ueberschneidung),
-            elemente: bestehend.elemente ++ [neuer_zeitraum]
-          }
-        end
-
-      unveraenderte =
-        for %Ueberlagerung{} = bestehend <- bestehende,
-            rest <- differenz(bestehend, ueberschneidungen) do
-          %Ueberlagerung{zeitraum: als_intervall(rest), elemente: bestehend.elemente}
-        end
-
-      neue =
-        neuer_zeitraum
-        |> differenz(ueberschneidungen)
-        |> Enum.map(&%Ueberlagerung{zeitraum: als_intervall(&1), elemente: [neuer_zeitraum]})
-
-      unveraenderte ++ ueberschneidungen ++ neue
-    end)
-  end
+  defdelegate ueberlagere(zeitraeume), to: Ueberlagerung, as: :aus_zeitraeumen
 
   @doc """
   Ermittelt die Überschneidung zweier Zeitperioden.
