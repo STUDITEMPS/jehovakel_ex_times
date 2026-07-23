@@ -4,22 +4,37 @@ defprotocol Shared.ZeitraumProtokoll do
 
   @impl true
   defmacro __deriving__(module, options) do
+    struct_keys = Enum.sort(Enum.map(Macro.struct_info!(module, __CALLER__), & &1.field))
+
     if zeitraum_key = Keyword.get(options, :zeitraum) do
+      if zeitraum_key not in struct_keys do
+        raise ArgumentError,
+              "#{inspect(zeitraum_key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
+      end
+
       quote do
         defimpl Shared.ZeitraumProtokoll, for: unquote(module) do
-          def als_intervall(zeitraum), do: Map.fetch!(zeitraum, unquote(zeitraum_key))
+          def als_intervall(zeitraum), do: zeitraum.unquote(zeitraum_key)
         end
       end
     else
       start_key = Keyword.get(options, :start, :start)
       end_key = Keyword.get(options, :ende, :ende)
 
+      if start_key not in struct_keys do
+        raise ArgumentError,
+              "#{inspect(start_key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
+      end
+
+      if end_key not in struct_keys do
+        raise ArgumentError,
+              "#{inspect(end_key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
+      end
+
       quote do
         defimpl Shared.ZeitraumProtokoll, for: unquote(module) do
           def als_intervall(zeitraum) do
-            start = Map.fetch!(zeitraum, unquote(start_key))
-            ende = Map.fetch!(zeitraum, unquote(end_key))
-            Shared.Zeitperiode.new(start, ende)
+            Shared.Zeitperiode.new(zeitraum.unquote(start_key), zeitraum.unquote(end_key))
           end
         end
       end

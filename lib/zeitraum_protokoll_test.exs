@@ -68,42 +68,30 @@ defmodule Shared.ZeitraumProtokollTest do
   end
 
   describe "error handling" do
-    defmodule MissingDefaultKeys do
-      @derive ZeitraumProtokoll
-      defstruct [:other_field]
-    end
-
     test "raises when required default keys are missing" do
-      struct = %MissingDefaultKeys{other_field: "value"}
-
-      assert_raise KeyError, fn ->
-        ZeitraumProtokoll.als_intervall(struct)
+      assert_raise ArgumentError, ~r/^:start is not a key/, fn ->
+        defmodule MissingDefaultKeys do
+          @derive ZeitraumProtokoll
+          defstruct [:other_field]
+        end
       end
-    end
-
-    defmodule MissingCustomKeys do
-      @derive {ZeitraumProtokoll, start: :custom_start}
-      defstruct [:other_field]
     end
 
     test "raises when required custom keys are missing" do
-      struct = %MissingCustomKeys{other_field: "value"}
-
-      assert_raise KeyError, fn ->
-        ZeitraumProtokoll.als_intervall(struct)
+      assert_raise ArgumentError, ~r/^:custom_start is not a key/, fn ->
+        defmodule MissingCustomKeys do
+          @derive {ZeitraumProtokoll, start: :custom_start}
+          defstruct [:other_field]
+        end
       end
     end
 
-    defmodule MissingZeitraumKey do
-      @derive {ZeitraumProtokoll, zeitraum: :missing_key}
-      defstruct [:other_field]
-    end
-
     test "raises when zeitraum key is missing" do
-      struct = %MissingZeitraumKey{other_field: "value"}
-
-      assert_raise KeyError, fn ->
-        ZeitraumProtokoll.als_intervall(struct)
+      assert_raise ArgumentError, ~r/^:missing_key is not a key/, fn ->
+        defmodule MissingZeitraumKey do
+          @derive {ZeitraumProtokoll, zeitraum: :missing_key}
+          defstruct [:other_field]
+        end
       end
     end
   end
