@@ -5,7 +5,7 @@ defmodule Shared.Zeitraum.Vereinigung do
 
   defguardp ueberlappt(a, b) when elem(b, 0) <= elem(a, 1)
   defguardp endet_vor(a, b) when elem(a, 1) < elem(b, 1)
-  defguardp beginnt_nach(a, b) when elem(a, 0) > elem(b, 0)
+  # defguardp beginnt_nach(a, b) when elem(a, 0) > elem(b, 0)
 
   @spec aus_zeitraeumen([Zeitraum.t()]) :: [Timex.Interval.t()]
   def aus_zeitraeumen(zeitraeume) do

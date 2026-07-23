@@ -58,7 +58,13 @@ defmodule Shared.Zeitraum.Ueberlagerung do
 
   defp abschnitt(von, bis, aktive) do
     %__MODULE__{
-      zeitraum: %Timex.Interval{from: von, until: bis, step: [seconds: 1], left_open: false, right_open: true},
+      zeitraum: %Timex.Interval{
+        from: von,
+        until: bis,
+        step: [seconds: 1],
+        left_open: false,
+        right_open: true
+      },
       elemente: aktive
     }
   end

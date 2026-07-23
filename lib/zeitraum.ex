@@ -201,7 +201,7 @@ defmodule Shared.Zeitraum do
 
   Nicht überlappende Zeiträume bleiben getrennt:
 
-      iex> ergebnis = ueberlagere([~D[2025-01-01], ~D[2025-01-03]])
+      iex> ueberlagere([~D[2025-01-01], ~D[2025-01-03]])
       [
         %Ueberlagerung{zeitraum: ~Z[2025-01-01 00:00:00/2025-01-02 00:00:00], elemente: [~D[2025-01-01]]},
         %Ueberlagerung{zeitraum: ~Z[2025-01-03 00:00:00/2025-01-04 00:00:00], elemente: [~D[2025-01-03]]},
@@ -265,8 +265,8 @@ defmodule Shared.Zeitraum do
   %Timex.Interval{from: ~N[2025-01-20 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]}
 
   iex> vereinigung(~v[2025-05], ~v[2025-03])
-  {%Timex.Interval{from: ~N[2025-01-27 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]},
-    %Timex.Interval{from: ~N[2025-01-13 00:00:00], until: ~N[2025-01-20 00:00:00], step: [seconds: 1]}}
+  {%Timex.Interval{from: ~N[2025-01-13 00:00:00], until: ~N[2025-01-20 00:00:00], step: [seconds: 1]},
+    %Timex.Interval{from: ~N[2025-01-27 00:00:00], until: ~N[2025-02-03 00:00:00], step: [seconds: 1]}}
   """
   @spec vereinigung(t(), t()) :: t() | {t(), t()}
   def vereinigung(a, b) do

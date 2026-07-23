@@ -402,7 +402,8 @@ defmodule Shared.Month do
   @spec shift(t(), integer()) :: t()
   def shift(%__MODULE__{} = month, 0), do: month
 
-  def shift(%__MODULE__{year: year, month: month}, amount_of_months) when is_integer(amount_of_months) do
+  def shift(%__MODULE__{year: year, month: month}, amount_of_months)
+      when is_integer(amount_of_months) do
     new_year = year + div(amount_of_months, 12)
     new_month = month + rem(amount_of_months, 12)
 
