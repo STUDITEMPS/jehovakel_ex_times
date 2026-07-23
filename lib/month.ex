@@ -3,9 +3,8 @@ defmodule Shared.Month do
     defexception [:message]
   end
 
-  if Code.ensure_loaded?(Jason.Encoder) do
-    @derive Jason.Encoder
-  end
+  if Code.ensure_loaded?(JSON.Encoder), do: @derive(JSON.Encoder)
+  if Code.ensure_loaded?(Jason.Encoder), do: @derive(Jason.Encoder)
 
   @enforce_keys [:year, :month]
   defstruct [:year, :month]
