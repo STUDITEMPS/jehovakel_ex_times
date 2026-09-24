@@ -467,62 +467,87 @@ defmodule Shared.Zeitraum do
   """
   @spec sigil_Z(String.t(), keyword()) :: t() | no_return()
   defmacro sigil_Z({:<<>>, _context, [string]}, flags) do
+    string
+    |> sigil_z_format()
+    |> sigil_z_quote(string, ?r in flags)
+  end
+
+  defp sigil_z_format(string) do
     cond do
-      String.match?(string, ~r/\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}/) and ?r in flags ->
-        quote do
-          [left, right] = unquote(to_date_sigils(string))
-
-          Date.range(left, Date.add(right, -1), 1)
-        end
-
       String.match?(string, ~r/\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}/) ->
-        quote do
-          Shared.Zeitperiode.new(unquote_splicing(to_date_sigils(string)), right_open: true)
-        end
-
-      String.match?(string, ~r/\d{4}-W\d{2}\/\d{4}-W\d{2}/) and ?r in flags ->
-        quote do
-          [left, right] = String.split(unquote(string), "/", parts: 2)
-
-          Shared.Week.range(
-            Shared.Week.parse!(left),
-            Shared.Week.parse!(right) |> Shared.Week.shift(-1)
-          )
-        end
+        :date
 
       String.match?(string, ~r/\d{4}-W\d{2}\/\d{4}-W\d{2}/) ->
-        quote do
-          [left, right] = String.split(unquote(string), "/", parts: 2)
-          left_date = Shared.Week.parse!(left) |> Shared.Week.first_day()
-          right_date = Shared.Week.parse!(right) |> Shared.Week.first_day()
-
-          Shared.Zeitperiode.new(left_date, right_date, right_open: true)
-        end
-
-      String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) and ?r in flags ->
-        quote do
-          [left, right] = unquote(to_month_sigils(string))
-          Shared.Month.range(left, Shared.Month.shift(right, -1))
-        end
+        :week
 
       String.match?(string, ~r/\d{4}-\d{2}\/\d{4}-\d{2}/) ->
-        quote do
-          [left, right] = unquote(to_month_sigils(string))
-          left_date = Shared.Month.first_day(left)
-          right_date = Shared.Month.first_day(right)
-          Shared.Zeitperiode.new(left_date, right_date, right_open: true)
-        end
+        :month
 
       String.match?(
         string,
         ~r/\d{4}-\d{2}-\d{2}(T| )\d{2}:\d{2}:\d{2}\/\d{4}-\d{2}-\d{2}(T| )\d{2}:\d{2}:\d{2}/
       ) ->
-        quote do
-          Shared.Zeitperiode.new(unquote_splicing(to_naive_date_time_sigils(string)))
-        end
+        :naive_date_time
 
       :else ->
         raise ArgumentError, "Invalid format: #{inspect(string)}"
+    end
+  end
+
+  defp sigil_z_quote(:date, string, true = _range?) do
+    quote do
+      [left, right] = unquote(to_date_sigils(string))
+
+      Date.range(left, Date.add(right, -1), 1)
+    end
+  end
+
+  defp sigil_z_quote(:date, string, false = _range?) do
+    quote do
+      Shared.Zeitperiode.new(unquote_splicing(to_date_sigils(string)), right_open: true)
+    end
+  end
+
+  defp sigil_z_quote(:week, string, true = _range?) do
+    quote do
+      [left, right] = String.split(unquote(string), "/", parts: 2)
+
+      Shared.Week.range(
+        Shared.Week.parse!(left),
+        Shared.Week.parse!(right) |> Shared.Week.shift(-1)
+      )
+    end
+  end
+
+  defp sigil_z_quote(:week, string, false = _range?) do
+    quote do
+      [left, right] = String.split(unquote(string), "/", parts: 2)
+      left_date = Shared.Week.parse!(left) |> Shared.Week.first_day()
+      right_date = Shared.Week.parse!(right) |> Shared.Week.first_day()
+
+      Shared.Zeitperiode.new(left_date, right_date, right_open: true)
+    end
+  end
+
+  defp sigil_z_quote(:month, string, true = _range?) do
+    quote do
+      [left, right] = unquote(to_month_sigils(string))
+      Shared.Month.range(left, Shared.Month.shift(right, -1))
+    end
+  end
+
+  defp sigil_z_quote(:month, string, false = _range?) do
+    quote do
+      [left, right] = unquote(to_month_sigils(string))
+      left_date = Shared.Month.first_day(left)
+      right_date = Shared.Month.first_day(right)
+      Shared.Zeitperiode.new(left_date, right_date, right_open: true)
+    end
+  end
+
+  defp sigil_z_quote(:naive_date_time, string, _range?) do
+    quote do
+      Shared.Zeitperiode.new(unquote_splicing(to_naive_date_time_sigils(string)))
     end
   end
 
