@@ -526,14 +526,15 @@ defmodule Shared.Zeitraum do
     end
   end
 
-  @sigil_m_context [delimiter: "[", context: Elixir, imports: [{2, Shared.Month}]]
-  defp to_month_sigils(string), do: to_sigils(string, :sigil_m, @sigil_m_context)
+  @month_sigil_context [delimiter: "[", context: Elixir, imports: [{2, Shared.Month}]]
+  defp to_month_sigils(string), do: to_sigils(string, :sigil_m, @month_sigil_context)
 
-  @sigil_D_context [delimiter: "[", context: Elixir, imports: [{2, Kernel}]]
-  defp to_date_sigils(string), do: to_sigils(string, :sigil_D, @sigil_D_context)
+  @date_sigil_context [delimiter: "[", context: Elixir, imports: [{2, Kernel}]]
+  defp to_date_sigils(string), do: to_sigils(string, :sigil_D, @date_sigil_context)
 
-  @sigil_N_context [delimiter: "[", context: Elixir, imports: [{2, Kernel}]]
-  defp to_naive_date_time_sigils(string), do: to_sigils(string, :sigil_N, @sigil_N_context)
+  @naive_date_time_sigil_context [delimiter: "[", context: Elixir, imports: [{2, Kernel}]]
+  defp to_naive_date_time_sigils(string),
+    do: to_sigils(string, :sigil_N, @naive_date_time_sigil_context)
 
   defp to_sigils(string, sigil, context) do
     string
