@@ -1,7 +1,7 @@
 services:
   # Update this to the name of the service you want to work with in your docker-compose.yml file
   devcontainer:
-    image: ghcr.io/studitemps/devcontainer-base:date-2026-03-03
+    image: ghcr.io/studitemps/devcontainer-base:date-2026-09-18
 
     network_mode: "host"
 
@@ -18,7 +18,7 @@ services:
 
   rabbitmq:
     # https://hub.docker.com/_/rabbitmq/
-    image: rabbitmq:3.10.8
+    image: rabbitmq:4.0.5
     ports:
       - "127.0.0.1:5672:5672"       # publish to host loopback only
       - "127.0.0.1:15672:15672"       # publish to host loopback only
