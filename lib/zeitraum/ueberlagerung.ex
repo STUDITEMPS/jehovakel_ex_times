@@ -8,7 +8,10 @@ defmodule Shared.Zeitraum.Ueberlagerung do
 
   alias Shared.Zeitraum
 
-  @type t :: %__MODULE__{zeitraum: Timex.Interval.t(), elemente: [Shared.ZeitraumProtokoll.t()]}
+  @type t :: %__MODULE__{
+          zeitraum: Timex.Interval.t() | Date.Range.t(),
+          elemente: [Shared.ZeitraumProtokoll.t()]
+        }
 
   @enforce_keys [:zeitraum, :elemente]
   defstruct [:zeitraum, :elemente]
@@ -91,6 +94,6 @@ defmodule Shared.Zeitraum.Ueberlagerung do
   end
 
   defimpl Shared.ZeitraumProtokoll do
-    def als_intervall(%{zeitraum: zeitraum}), do: zeitraum
+    def zeitraum(%{zeitraum: zeitraum}), do: zeitraum
   end
 end
