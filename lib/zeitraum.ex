@@ -388,6 +388,8 @@ defmodule Shared.Zeitraum do
   def beginnt_vor?(%Timex.Interval{left_open: lo} = a, %Timex.Interval{left_open: lo} = b),
     do: NaiveDateTime.before?(a.from, b.from)
 
+  def beginnt_vor?(%Timex.Interval{}, %Timex.Interval{}), do: unterschiedlich_offene_intervalle!()
+
   def beginnt_vor?(a, b) do
     {a, b} = normalisiere(a, b)
     beginnt_vor?(a, b)
@@ -412,6 +414,9 @@ defmodule Shared.Zeitraum do
 
   def beginnt_nach?(%Timex.Interval{left_open: lo} = a, %Timex.Interval{left_open: lo} = b),
     do: NaiveDateTime.after?(a.from, b.from)
+
+  def beginnt_nach?(%Timex.Interval{}, %Timex.Interval{}),
+    do: unterschiedlich_offene_intervalle!()
 
   def beginnt_nach?(a, b) do
     {a, b} = normalisiere(a, b)
@@ -438,6 +443,8 @@ defmodule Shared.Zeitraum do
   def endet_vor?(%Timex.Interval{right_open: ro} = a, %Timex.Interval{right_open: ro} = b),
     do: NaiveDateTime.before?(a.until, b.until)
 
+  def endet_vor?(%Timex.Interval{}, %Timex.Interval{}), do: unterschiedlich_offene_intervalle!()
+
   def endet_vor?(a, b) do
     {a, b} = normalisiere(a, b)
     endet_vor?(a, b)
@@ -462,6 +469,8 @@ defmodule Shared.Zeitraum do
 
   def endet_nach?(%Timex.Interval{right_open: ro} = a, %Timex.Interval{right_open: ro} = b),
     do: NaiveDateTime.after?(a.until, b.until)
+
+  def endet_nach?(%Timex.Interval{}, %Timex.Interval{}), do: unterschiedlich_offene_intervalle!()
 
   def endet_nach?(a, b) do
     {a, b} = normalisiere(a, b)
@@ -497,9 +506,7 @@ defmodule Shared.Zeitraum do
     end
   end
 
-  def compare(%Timex.Interval{}, %Timex.Interval{}) do
-    raise ArgumentError, "Cannot compare intervals with different open/closed status"
-  end
+  def compare(%Timex.Interval{}, %Timex.Interval{}), do: unterschiedlich_offene_intervalle!()
 
   def compare(%type{} = a, %type{} = b) do
     if function_exported?(type, :compare, 2),
@@ -658,6 +665,10 @@ defmodule Shared.Zeitraum do
     |> String.split("/", parts: 2)
     |> Enum.map(&{:<<>>, [], [&1]})
     |> Enum.map(&{sigil, context, [&1, []]})
+  end
+
+  defp unterschiedlich_offene_intervalle! do
+    raise ArgumentError, "Cannot compare intervals with different open/closed status"
   end
 
   defp normalisiere(zeitraum) do

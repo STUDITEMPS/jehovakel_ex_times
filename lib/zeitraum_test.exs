@@ -459,6 +459,25 @@ defmodule Shared.ZeitraumTest do
       assert 86_400_000 == Zeitraum.dauer(~D[2025-01-01], :milliseconds)
     end
 
+    test "Vergleiche von unterschiedlich offenen Intervallen werfen einen Fehler" do
+      links_offen = %Timex.Interval{
+        Shared.Zeitperiode.new(~N[2025-01-01 00:00:00], ~N[2025-01-02 00:00:00])
+        | left_open: true
+      }
+
+      rechts_geschlossen = %Timex.Interval{
+        Shared.Zeitperiode.new(~N[2025-01-01 00:00:00], ~N[2025-01-02 00:00:00])
+        | right_open: false
+      }
+
+      andere = Shared.Zeitperiode.new(~N[2025-01-01 00:00:00], ~N[2025-01-03 00:00:00])
+
+      assert_raise ArgumentError, fn -> Zeitraum.beginnt_vor?(links_offen, andere) end
+      assert_raise ArgumentError, fn -> Zeitraum.beginnt_nach?(links_offen, andere) end
+      assert_raise ArgumentError, fn -> Zeitraum.endet_vor?(rechts_geschlossen, andere) end
+      assert_raise ArgumentError, fn -> Zeitraum.endet_nach?(rechts_geschlossen, andere) end
+    end
+
     test "gemischte Eingaben ergeben Date.Ranges" do
       result = Zeitraum.differenz(Date.range(~D[2025-01-01], ~D[2025-01-10]), ~v[2025-01])
       assert Enum.all?(result, &match?(%Date.Range{}, &1))
