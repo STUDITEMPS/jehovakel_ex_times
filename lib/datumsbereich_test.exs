@@ -1,7 +1,7 @@
-defmodule Shared.Zeitraum.DateRangeTest do
+defmodule Shared.DatumsbereichTest do
   use ExUnit.Case, async: true
 
-  alias Shared.Zeitraum.DateRange
+  alias Shared.Datumsbereich
   alias Shared.Zeitraum.Ueberlagerung
 
   describe "ueberlagere/1" do
@@ -12,7 +12,7 @@ defmodule Shared.Zeitraum.DateRangeTest do
 
       zeitraeume =
         [monat, anfang, mitte]
-        |> DateRange.ueberlagere()
+        |> Datumsbereich.ueberlagere()
         |> Enum.map(& &1.zeitraum)
 
       assert [
@@ -26,11 +26,11 @@ defmodule Shared.Zeitraum.DateRangeTest do
       range = Date.range(~D[2025-01-01], ~D[2025-01-05])
 
       assert [%Ueberlagerung{zeitraum: ^range, elemente: [^range]}] =
-               DateRange.ueberlagere([range])
+               Datumsbereich.ueberlagere([range])
     end
 
     test "gibt für eine leere Liste eine leere Liste zurück" do
-      assert [] == DateRange.ueberlagere([])
+      assert [] == Datumsbereich.ueberlagere([])
     end
   end
 end

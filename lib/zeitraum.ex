@@ -12,7 +12,7 @@ defmodule Shared.Zeitraum do
   `t:Timex.Interval.t/0` gerechnet.
   """
 
-  require Shared.Zeitraum.DateRange, as: DateRange
+  require Shared.Datumsbereich, as: Datumsbereich
 
   alias Shared.Zeitperiode
   alias Shared.Zeitraum.Ueberlagerung
@@ -79,7 +79,7 @@ defmodule Shared.Zeitraum do
   """
   def als_daterange(zeitraum, opts \\ [])
 
-  def als_daterange(range, _opts) when DateRange.is_valid(range), do: range
+  def als_daterange(range, _opts) when Datumsbereich.is_valid(range), do: range
 
   def als_daterange(%Timex.Interval{} = intervall, opts) do
     from_date = NaiveDateTime.to_date(intervall.from)
@@ -125,16 +125,17 @@ defmodule Shared.Zeitraum do
   @spec dauer(t, atom) :: Timex.Duration.t() | {:error, any}
   def dauer(zeitraum, einheit \\ :duration)
 
-  def dauer(range, einheit) when DateRange.is_valid(range) and DateRange.is_einheit(einheit),
-    do: DateRange.dauer(range, einheit)
+  def dauer(range, einheit)
+      when Datumsbereich.is_valid(range) and Datumsbereich.is_einheit(einheit),
+      do: Datumsbereich.dauer(range, einheit)
 
   def dauer(%Timex.Interval{} = intervall, einheit),
     do: Timex.Interval.duration(intervall, einheit)
 
   def dauer(zeitraum, einheit) do
     case normalisiere(zeitraum) do
-      range when DateRange.is_valid(range) and DateRange.is_einheit(einheit) ->
-        DateRange.dauer(range, einheit)
+      range when Datumsbereich.is_valid(range) and Datumsbereich.is_einheit(einheit) ->
+        Datumsbereich.dauer(range, einheit)
 
       zeitraum ->
         Timex.Interval.duration(als_intervall(zeitraum), einheit)
@@ -153,8 +154,8 @@ defmodule Shared.Zeitraum do
     true
   """
   @spec ueberschneidung?(t, t) :: boolean
-  def ueberschneidung?(a, b) when DateRange.are_valid(a, b),
-    do: DateRange.ueberschneidung?(a, b)
+  def ueberschneidung?(a, b) when Datumsbereich.are_valid(a, b),
+    do: Datumsbereich.ueberschneidung?(a, b)
 
   def ueberschneidung?(%Timex.Interval{} = a, %Timex.Interval{} = b),
     do: Timex.Interval.overlaps?(a, b)
@@ -180,8 +181,8 @@ defmodule Shared.Zeitraum do
   """
   @spec teil_von?(zu_testende_periode :: t, periode :: t) :: boolean
   def teil_von?(zu_testender_zeitraum, zeitraum)
-      when DateRange.are_valid(zu_testender_zeitraum, zeitraum),
-      do: DateRange.teil_von?(zu_testender_zeitraum, zeitraum)
+      when Datumsbereich.are_valid(zu_testender_zeitraum, zeitraum),
+      do: Datumsbereich.teil_von?(zu_testender_zeitraum, zeitraum)
 
   def teil_von?(%Timex.Interval{} = zu_testender_zeitraum, %Timex.Interval{} = zeitraum),
     do: Timex.Interval.contains?(zeitraum, zu_testender_zeitraum)
@@ -225,8 +226,8 @@ defmodule Shared.Zeitraum do
   # Zieht von einer einzelnen Zeitperiode eine andere ab. Für tolle Beispiele siehe
   # https://hexdocs.pm/timex/3.5.0/Timex.Interval.html#difference/2
   def differenz(basis_intervall, abzuziehendes_intervall)
-      when DateRange.are_valid(basis_intervall, abzuziehendes_intervall),
-      do: DateRange.differenz(basis_intervall, abzuziehendes_intervall)
+      when Datumsbereich.are_valid(basis_intervall, abzuziehendes_intervall),
+      do: Datumsbereich.differenz(basis_intervall, abzuziehendes_intervall)
 
   def differenz(%Timex.Interval{} = basis_intervall, %Timex.Interval{} = abzuziehendes_intervall),
     do: Timex.Interval.difference(basis_intervall, abzuziehendes_intervall)
@@ -273,8 +274,8 @@ defmodule Shared.Zeitraum do
   @spec ueberlagere(list(t())) :: list(Ueberlagerung.t())
   def ueberlagere(zeitraeume) do
     # Nur bei reinen Date.Ranges, da die Überlagerung die ursprünglichen Elemente enthalten muss.
-    if Enum.all?(zeitraeume, &DateRange.is_valid(&1)),
-      do: DateRange.ueberlagere(zeitraeume),
+    if Enum.all?(zeitraeume, &Datumsbereich.is_valid(&1)),
+      do: Datumsbereich.ueberlagere(zeitraeume),
       else: Ueberlagerung.aus_zeitraeumen(zeitraeume)
   end
 
@@ -301,7 +302,8 @@ defmodule Shared.Zeitraum do
   Date.range(~D[2025-01-01], ~D[2025-01-01])
   """
   @spec ueberschneidung(t(), t()) :: t() | nil
-  def ueberschneidung(a, b) when DateRange.are_valid(a, b), do: DateRange.ueberschneidung(a, b)
+  def ueberschneidung(a, b) when Datumsbereich.are_valid(a, b),
+    do: Datumsbereich.ueberschneidung(a, b)
 
   def ueberschneidung(%Timex.Interval{} = a, %Timex.Interval{} = b) do
     case differenz(a, differenz(a, b)) do
@@ -363,8 +365,8 @@ defmodule Shared.Zeitraum do
   def vereinigung(zeitraeume) when is_list(zeitraeume) do
     normalisierte_zeitraeume = Enum.map(zeitraeume, &normalisiere/1)
 
-    if Enum.all?(normalisierte_zeitraeume, &DateRange.is_valid(&1)),
-      do: DateRange.vereinigung(normalisierte_zeitraeume),
+    if Enum.all?(normalisierte_zeitraeume, &Datumsbereich.is_valid(&1)),
+      do: Datumsbereich.vereinigung(normalisierte_zeitraeume),
       else: Vereinigung.aus_zeitraeumen(zeitraeume)
   end
 
@@ -383,7 +385,8 @@ defmodule Shared.Zeitraum do
     false
   """
   @spec beginnt_vor?(t(), t()) :: boolean()
-  def beginnt_vor?(a, b) when DateRange.are_valid(a, b), do: DateRange.beginnt_frueher?(a, b)
+  def beginnt_vor?(a, b) when Datumsbereich.are_valid(a, b),
+    do: Datumsbereich.beginnt_frueher?(a, b)
 
   def beginnt_vor?(%Timex.Interval{left_open: lo} = a, %Timex.Interval{left_open: lo} = b),
     do: NaiveDateTime.before?(a.from, b.from)
@@ -410,7 +413,8 @@ defmodule Shared.Zeitraum do
     false
   """
   @spec beginnt_nach?(t(), t()) :: boolean()
-  def beginnt_nach?(a, b) when DateRange.are_valid(a, b), do: DateRange.beginnt_spaeter?(a, b)
+  def beginnt_nach?(a, b) when Datumsbereich.are_valid(a, b),
+    do: Datumsbereich.beginnt_spaeter?(a, b)
 
   def beginnt_nach?(%Timex.Interval{left_open: lo} = a, %Timex.Interval{left_open: lo} = b),
     do: NaiveDateTime.after?(a.from, b.from)
@@ -438,7 +442,7 @@ defmodule Shared.Zeitraum do
     false
   """
   @spec endet_vor?(t(), t()) :: boolean()
-  def endet_vor?(a, b) when DateRange.are_valid(a, b), do: DateRange.endet_frueher?(a, b)
+  def endet_vor?(a, b) when Datumsbereich.are_valid(a, b), do: Datumsbereich.endet_frueher?(a, b)
 
   def endet_vor?(%Timex.Interval{right_open: ro} = a, %Timex.Interval{right_open: ro} = b),
     do: NaiveDateTime.before?(a.until, b.until)
@@ -465,7 +469,7 @@ defmodule Shared.Zeitraum do
     false
   """
   @spec endet_nach?(t(), t()) :: boolean()
-  def endet_nach?(a, b) when DateRange.are_valid(a, b), do: DateRange.endet_spaeter?(a, b)
+  def endet_nach?(a, b) when Datumsbereich.are_valid(a, b), do: Datumsbereich.endet_spaeter?(a, b)
 
   def endet_nach?(%Timex.Interval{right_open: ro} = a, %Timex.Interval{right_open: ro} = b),
     do: NaiveDateTime.after?(a.until, b.until)
@@ -495,7 +499,7 @@ defmodule Shared.Zeitraum do
 
   """
   @spec compare(t(), t()) :: :lt | :eq | :gt
-  def compare(a, b) when DateRange.are_valid(a, b), do: DateRange.compare(a, b)
+  def compare(a, b) when Datumsbereich.are_valid(a, b), do: Datumsbereich.compare(a, b)
 
   def compare(
         %Timex.Interval{left_open: lo, right_open: ro} = a,
@@ -673,14 +677,14 @@ defmodule Shared.Zeitraum do
 
   defp normalisiere(zeitraum) do
     case ZeitraumProtokoll.zeitraum(zeitraum) do
-      range when DateRange.is_valid(range) -> range
+      range when Datumsbereich.is_valid(range) -> range
       zeitraum -> als_intervall(zeitraum)
     end
   end
 
   defp normalisiere(a, b) do
     case {normalisiere(a), normalisiere(b)} do
-      {a, b} when DateRange.are_valid(a, b) -> {a, b}
+      {a, b} when Datumsbereich.are_valid(a, b) -> {a, b}
       {a, b} -> {als_intervall(a), als_intervall(b)}
     end
   end

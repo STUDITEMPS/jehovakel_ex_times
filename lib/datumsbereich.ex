@@ -1,4 +1,4 @@
-defmodule Shared.Zeitraum.DateRange do
+defmodule Shared.Datumsbereich do
   @moduledoc false
 
   alias Shared.Zeitraum.Ueberlagerung
