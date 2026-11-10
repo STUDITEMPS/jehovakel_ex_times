@@ -1,40 +1,68 @@
 defprotocol Shared.ZeitraumProtokoll do
-  @spec als_intervall(t) :: Timex.Interval.t()
-  def als_intervall(zeitraum)
+  @type interval :: %Timex.Interval{
+          left_open: false,
+          right_open: true,
+          from: NaiveDateTime.t(),
+          until: NaiveDateTime.t()
+        }
+
+  @type zeitraum :: Date.Range.t() | interval()
+
+  @spec zeitraum(t) :: zeitraum()
+  def zeitraum(zeitraum)
 
   @impl true
   defmacro __deriving__(module, options) do
     struct_keys = Enum.sort(Enum.map(Macro.struct_info!(module, __CALLER__), & &1.field))
 
     if zeitraum_key = Keyword.get(options, :zeitraum) do
-      if zeitraum_key not in struct_keys do
-        raise ArgumentError,
-              "#{inspect(zeitraum_key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
-      end
+      validate_key!(zeitraum_key, struct_keys, module)
 
-      quote do
-        defimpl Shared.ZeitraumProtokoll, for: unquote(module) do
-          def als_intervall(zeitraum), do: zeitraum.unquote(zeitraum_key)
+      zeitraum_key_impl(module, zeitraum_key)
+    else
+      default = if :beginn not in struct_keys and :start in struct_keys, do: :start, else: :beginn
+      beginn_key = Keyword.get(options, :beginn, default)
+      ende_key = Keyword.get(options, :ende, :ende)
+
+      validate_key!(beginn_key, struct_keys, module)
+      validate_key!(ende_key, struct_keys, module)
+
+      beginn_ende_key_impl(module, beginn_key, ende_key)
+    end
+  end
+
+  defp validate_key!(key, struct_keys, module) do
+    if key not in struct_keys do
+      raise ArgumentError,
+            "#{inspect(key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
+    end
+  end
+
+  defp zeitraum_key_impl(module, zeitraum_key) do
+    quote do
+      defimpl Shared.ZeitraumProtokoll, for: unquote(module) do
+        def zeitraum(zeitraum) do
+          case zeitraum.unquote(zeitraum_key) do
+            %Date{} = datum -> Date.range(datum, datum)
+            %Date.Range{} = zeitraum -> zeitraum
+            %Timex.Interval{} = zeitraum -> zeitraum
+            zeitraum -> Shared.ZeitraumProtokoll.zeitraum(zeitraum)
+          end
         end
       end
-    else
-      start_key = Keyword.get(options, :start, :start)
-      end_key = Keyword.get(options, :ende, :ende)
+    end
+  end
 
-      if start_key not in struct_keys do
-        raise ArgumentError,
-              "#{inspect(start_key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
-      end
+  defp beginn_ende_key_impl(module, beginn_key, ende_key) do
+    quote do
+      defimpl Shared.ZeitraumProtokoll, for: unquote(module) do
+        def zeitraum(zeitraum) do
+          start = zeitraum.unquote(beginn_key)
+          ende = zeitraum.unquote(ende_key)
 
-      if end_key not in struct_keys do
-        raise ArgumentError,
-              "#{inspect(end_key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
-      end
-
-      quote do
-        defimpl Shared.ZeitraumProtokoll, for: unquote(module) do
-          def als_intervall(zeitraum) do
-            Shared.Zeitperiode.new(zeitraum.unquote(start_key), zeitraum.unquote(end_key))
+          case {start, ende} do
+            {%Date{}, %Date{}} -> Date.range(start, ende)
+            _ -> Shared.Zeitperiode.new(start, ende)
           end
         end
       end
@@ -42,43 +70,18 @@ defprotocol Shared.ZeitraumProtokoll do
   end
 end
 
-defimpl Shared.ZeitraumProtokoll, for: Shared.Month do
-  def als_intervall(monat) do
-    {start, ende} = Shared.Month.to_dates(monat)
-    Shared.Zeitperiode.new(start, ende)
-  end
+defimpl Shared.ZeitraumProtokoll, for: [Shared.Month, Shared.Week] do
+  def zeitraum(%@for{} = zeitraum), do: @for.to_range(zeitraum)
 end
 
-defimpl Shared.ZeitraumProtokoll, for: Shared.Month.Range do
-  def als_intervall(%@for{} = month_range),
-    do: @protocol.als_intervall(@for.to_date_range(month_range))
-end
-
-defimpl Shared.ZeitraumProtokoll, for: Shared.Week do
-  def als_intervall(week) do
-    {beginns_at, ends_at} = Shared.Week.to_dates(week)
-    Shared.Zeitperiode.new(beginns_at, ends_at)
-  end
-end
-
-defimpl Shared.ZeitraumProtokoll, for: Shared.Week.Range do
-  def als_intervall(%@for{} = week_range),
-    do: @protocol.als_intervall(@for.to_date_range(week_range))
+defimpl Shared.ZeitraumProtokoll, for: [Shared.Month.Range, Shared.Week.Range] do
+  def zeitraum(%@for{} = month_range), do: @for.to_date_range(month_range)
 end
 
 defimpl Shared.ZeitraumProtokoll, for: Date do
-  def als_intervall(date), do: Shared.Zeitperiode.new(date, date)
+  def zeitraum(datum), do: Date.range(datum, datum)
 end
 
-defimpl Shared.ZeitraumProtokoll, for: Date.Range do
-  def als_intervall(%{step: 1} = date_range),
-    do: Shared.Zeitperiode.new(date_range.first, date_range.last)
-
-  def als_intervall(_date_range) do
-    raise ArgumentError, "Date Ranges with steps sizes other than 1 are not supported"
-  end
-end
-
-defimpl Shared.ZeitraumProtokoll, for: Timex.Interval do
-  def als_intervall(interval), do: interval
+defimpl Shared.ZeitraumProtokoll, for: [Date.Range, Timex.Interval] do
+  def zeitraum(zeitraum), do: zeitraum
 end
