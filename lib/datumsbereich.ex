@@ -1,7 +1,168 @@
 defmodule Shared.Datumsbereich do
-  @moduledoc false
+  @moduledoc """
+  Funktionen für ganztägige Zeiträume auf Basis von `t:Date.Range.t/0`.
+
+  Gerechnet wird direkt auf den ISO-Tagen der Ranges. Unterstützt werden nur
+  aufsteigende Ranges mit `step: 1`, siehe `is_valid/1`.
+
+  ## Beispiele
+
+      iex> Shared.Datumsbereich.ueberschneidung?(
+      ...>   Date.range(~D[2025-01-01], ~D[2025-01-05]),
+      ...>   Date.range(~D[2025-01-05], ~D[2025-01-10])
+      ...> )
+      true
+
+      iex> Shared.Datumsbereich.differenz(
+      ...>   Date.range(~D[2025-01-01], ~D[2025-01-10]),
+      ...>   Date.range(~D[2025-01-04], ~D[2025-01-06])
+      ...> )
+      [Date.range(~D[2025-01-01], ~D[2025-01-03]), Date.range(~D[2025-01-07], ~D[2025-01-10])]
+
+      iex> Shared.Datumsbereich.vereinigung([
+      ...>   Date.range(~D[2025-01-06], ~D[2025-01-10]),
+      ...>   Date.range(~D[2025-01-01], ~D[2025-01-05])
+      ...> ])
+      [Date.range(~D[2025-01-01], ~D[2025-01-10])]
+
+  ## Eigene Structs als Datumsbereich
+
+  Mit `use Shared.Datumsbereich` bekommt ein Struct eine Funktion
+  `to_date_range/1`, siehe `__using__/1`. `to_date_range/1` wandelt solche
+  Structs in ein `Date.Range` um:
+
+      iex> Shared.Datumsbereich.to_date_range(Shared.Month.range(~m[2025-01], ~m[2025-02]))
+      Date.range(~D[2025-01-01], ~D[2025-02-28])
+  """
 
   alias Shared.Zeitraum.Ueberlagerung
+
+  @callback to_date_range(struct()) :: Date.Range.t()
+
+  @doc """
+  Implementiert `c:to_date_range/1` im aufrufenden Struct-Modul.
+
+  Die Keys werden zur Compile-Zeit gegen die Felder des Structs geprüft.
+
+  ## Optionen
+
+    * `:datumsbereich` – Feld mit einem `Date.Range` oder einem Struct, dessen Modul
+      selbst `to_date_range/1` implementiert.
+    * `:beginn` – Feld mit dem ersten Tag als `Date`. Default ist `:beginn`,
+      bzw. `:start`, wenn das Struct kein Feld `:beginn`, aber ein Feld `:start` hat.
+    * `:ende` – Feld mit dem letzten Tag (inklusive) als `Date`. Default ist `:ende`.
+
+  ## Beispiele
+
+  Mit den Default-Keys:
+
+      defmodule Urlaub do
+        use Shared.Datumsbereich
+        defstruct [:beginn, :ende]
+      end
+
+      Urlaub.to_date_range(%Urlaub{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]})
+      #=> Date.range(~D[2025-07-01], ~D[2025-07-14])
+
+  Mit eigenen Keys:
+
+      defmodule Vertrag do
+        use Shared.Datumsbereich, beginn: :gueltig_ab, ende: :gueltig_bis
+        defstruct [:gueltig_ab, :gueltig_bis]
+      end
+
+      Vertrag.to_date_range(%Vertrag{gueltig_ab: ~D[2025-01-01], gueltig_bis: ~D[2025-12-31]})
+      #=> Date.range(~D[2025-01-01], ~D[2025-12-31])
+
+  Mit einem Feld, das bereits einen Datumsbereich enthält. Das kann auch ein
+  anderes Struct sein, das `use Shared.Datumsbereich` verwendet:
+
+      defmodule Abrechnung do
+        use Shared.Datumsbereich, datumsbereich: :urlaub
+        defstruct [:urlaub, :betrag]
+      end
+
+      urlaub = %Urlaub{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]}
+      Abrechnung.to_date_range(%Abrechnung{urlaub: urlaub, betrag: 100})
+      #=> Date.range(~D[2025-07-01], ~D[2025-07-14])
+  """
+  defmacro __using__(optionen) do
+    quote do
+      @behaviour Shared.Datumsbereich
+      @datumsbereich_optionen unquote(optionen)
+      @before_compile Shared.Datumsbereich
+    end
+  end
+
+  @doc false
+  defmacro __before_compile__(env) do
+    optionen = Module.get_attribute(env.module, :datumsbereich_optionen)
+    struct_keys = Enum.sort(Enum.map(Macro.struct_info!(env.module, env), & &1.field))
+
+    if datumsbereich_key = Keyword.get(optionen, :datumsbereich) do
+      validiere_key!(datumsbereich_key, struct_keys, env.module)
+
+      quote do
+        @impl Shared.Datumsbereich
+        def to_date_range(%__MODULE__{} = struct),
+          do: Shared.Datumsbereich.to_date_range(struct.unquote(datumsbereich_key))
+      end
+    else
+      default = if :beginn not in struct_keys and :start in struct_keys, do: :start, else: :beginn
+      beginn_key = Keyword.get(optionen, :beginn, default)
+      ende_key = Keyword.get(optionen, :ende, :ende)
+
+      validiere_key!(beginn_key, struct_keys, env.module)
+      validiere_key!(ende_key, struct_keys, env.module)
+
+      quote do
+        @impl Shared.Datumsbereich
+        def to_date_range(%__MODULE__{
+              unquote(beginn_key) => %Date{} = beginn,
+              unquote(ende_key) => %Date{} = ende
+            }),
+            do: Date.range(beginn, ende)
+      end
+    end
+  end
+
+  @doc """
+  Liefert ein `Date.Range` unverändert zurück. Bei einem Struct, dessen Modul
+  `to_date_range/1` implementiert, wird diese Funktion aufgerufen.
+
+  ## Beispiele
+
+      iex> Shared.Datumsbereich.to_date_range(Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      Date.range(~D[2025-01-01], ~D[2025-01-05])
+
+      iex> Shared.Datumsbereich.to_date_range(Shared.Week.range(~v[2025-01], ~v[2025-02]))
+      Date.range(~D[2024-12-30], ~D[2025-01-12])
+
+      iex> Shared.Datumsbereich.to_date_range(~D[2025-01-01])
+      ** (ArgumentError) ~D[2025-01-01] ist kein Date.Range und implementiert kein to_date_range/1
+  """
+  @spec to_date_range(Date.Range.t() | struct()) :: Date.Range.t()
+  def to_date_range(%Date.Range{} = range), do: range
+
+  def to_date_range(%modul{} = wert) do
+    if Code.ensure_loaded?(modul) and function_exported?(modul, :to_date_range, 1),
+      do: modul.to_date_range(wert),
+      else: kein_date_range!(wert)
+  end
+
+  def to_date_range(wert), do: kein_date_range!(wert)
+
+  defp kein_date_range!(wert) do
+    raise ArgumentError,
+          "#{inspect(wert)} ist kein Date.Range und implementiert kein to_date_range/1"
+  end
+
+  defp validiere_key!(key, struct_keys, module) do
+    if key not in struct_keys do
+      raise ArgumentError,
+            "#{inspect(key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
+    end
+  end
 
   defmacrop beginn(range), do: quote(do: unquote(range).first_in_iso_days)
   defmacrop ende(range), do: quote(do: unquote(range).last_in_iso_days)
