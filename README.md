@@ -10,8 +10,9 @@ by adding `jehovakel_ex_times` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:jehovakel_ex_times, "~> 1.0.0",
-       git: "https://github.com/STUDITEMPS/jehovakel_ex_times.git"
+    {:jehovakel_ex_times, "~> 3.0",
+       git: "https://github.com/STUDITEMPS/jehovakel_ex_times.git",
+       tag: "v3.0.0"
     }
   ]
 end
