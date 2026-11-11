@@ -371,25 +371,18 @@ defmodule Shared.Datumsbereich do
 
   # --- Dauer ---
 
-  @type einheit :: :duration | :days | :hours | :minutes | :seconds | :weeks
+  @doc """
+  Liefert die Anzahl der Tage eines Datumsbereichs, inklusive erstem und letztem Tag.
 
-  defguard is_einheit(einheit)
-           when einheit in [:duration, :days, :hours, :minutes, :seconds, :weeks]
+  ## Beispiele
 
-  @spec dauer(t(), einheit()) :: non_neg_integer() | Timex.Duration.t()
-  def dauer(range, einheit) when is_valid(range) and is_einheit(einheit) do
-    tage = ende(range) - beginn(range) + 1
+      iex> Shared.Datumsbereich.dauer(Date.range(~D[2025-01-01], ~D[2025-01-07]))
+      7
 
-    case einheit do
-      :duration -> Timex.Duration.from_days(tage)
-      :days -> tage
-      :hours -> tage * 24
-      :minutes -> tage * 24 * 60
-      :seconds -> tage * 24 * 60 * 60
-      :weeks -> div(tage, 7)
-    end
-  end
-
-  def dauer(%_{} = datumsbereich, einheit) when is_einheit(einheit),
-    do: dauer(to_date_range(datumsbereich), einheit)
+      iex> Shared.Datumsbereich.dauer(~D[2025-01-01])
+      1
+  """
+  @spec dauer(t()) :: pos_integer()
+  def dauer(range) when is_valid(range), do: ende(range) - beginn(range) + 1
+  def dauer(%_{} = datumsbereich), do: dauer(to_date_range(datumsbereich))
 end

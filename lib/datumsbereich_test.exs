@@ -82,13 +82,13 @@ defmodule Shared.DatumsbereichTest do
              ] == ueberlagerungen
     end
 
-    test "compare/2 und dauer/2 wandeln Structs vorher um", %{urlaub: urlaub, januar: januar} do
+    test "compare/2 und dauer/1 wandeln Structs vorher um", %{urlaub: urlaub, januar: januar} do
       assert :gt == Datumsbereich.compare(urlaub, januar)
-      assert 6 == Datumsbereich.dauer(urlaub, :days)
-      assert 24 == Datumsbereich.dauer(~D[2025-01-01], :hours)
+      assert 6 == Datumsbereich.dauer(urlaub)
+      assert 1 == Datumsbereich.dauer(~D[2025-01-01])
     end
 
-    test "ungültige Date.Ranges und Einheiten führen zu Fehlern statt Endlosschleifen" do
+    test "ungültige Date.Ranges führen zu Fehlern statt Endlosschleifen" do
       absteigend = Date.range(~D[2025-01-05], ~D[2025-01-01], -1)
 
       assert_raise ArgumentError, fn ->
@@ -96,10 +96,7 @@ defmodule Shared.DatumsbereichTest do
       end
 
       assert_raise ArgumentError, fn -> Datumsbereich.vereinigung([absteigend]) end
-
-      assert_raise FunctionClauseError, fn ->
-        Datumsbereich.dauer(Date.range(~D[2025-01-01], ~D[2025-01-31]), :months)
-      end
+      assert_raise ArgumentError, fn -> Datumsbereich.dauer(absteigend) end
     end
   end
 
