@@ -69,6 +69,29 @@ defmodule Shared.DatumsbereichTest do
                ])
     end
 
+    test "differenz/2 mit Listen", %{urlaub: urlaub, januar: januar} do
+      assert [Date.range(~D[2025-01-03], ~D[2025-01-08])] == Datumsbereich.differenz(urlaub, [])
+      assert [] == Datumsbereich.differenz([], urlaub)
+      assert [] == Datumsbereich.differenz([urlaub, ~D[2025-01-01]], [januar])
+
+      assert [
+               Date.range(~D[2024-12-30], ~D[2024-12-31]),
+               Date.range(~D[2025-01-02], ~D[2025-01-05]),
+               Date.range(~D[2025-01-14], ~D[2025-01-19])
+             ] ==
+               Datumsbereich.differenz(
+                 [
+                   Shared.Week.range(~v[2025-01], ~v[2025-01]),
+                   Shared.Week.range(~v[2025-03], ~v[2025-03])
+                 ],
+                 [
+                   ~D[2025-01-01],
+                   ~D[2025-01-08],
+                   ~D[2025-01-13]
+                 ]
+               )
+    end
+
     test "ueberlagere/1 behält die ursprünglichen Elemente", %{urlaub: urlaub} do
       ueberlagerungen =
         [urlaub, ~D[2025-01-05]]

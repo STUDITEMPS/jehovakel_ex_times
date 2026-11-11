@@ -305,12 +305,28 @@ defmodule Shared.Datumsbereich do
 
   @doc """
   Liefert die Tage von `a`, die nicht in `b` liegen, als Liste von `Date.Range`s.
+  `a` und `b` können auch Listen von Datumsbereichen sein.
 
       iex> Shared.Datumsbereich.differenz(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-03])
       [Date.range(~D[2025-01-01], ~D[2025-01-02]), Date.range(~D[2025-01-04], ~D[2025-01-05])]
+
+      iex> Shared.Datumsbereich.differenz(
+      ...>   [Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-10]],
+      ...>   [~D[2025-01-02], ~D[2025-01-04], ~D[2025-01-10]]
+      ...> )
+      [
+        Date.range(~D[2025-01-01], ~D[2025-01-01]),
+        Date.range(~D[2025-01-03], ~D[2025-01-03]),
+        Date.range(~D[2025-01-05], ~D[2025-01-05])
+      ]
   """
-  @spec differenz(t(), t()) :: [Date.Range.t()]
-  # todo: listen unterstützen
+  @spec differenz(t() | [t()], t() | [t()]) :: [Date.Range.t()]
+  def differenz(basis, abzuziehen) when is_list(basis),
+    do: Enum.flat_map(basis, &differenz(&1, abzuziehen))
+
+  def differenz(basis, []), do: [to_date_range(basis)]
+  def differenz(basis, [abzuziehen | rest]), do: basis |> differenz(abzuziehen) |> differenz(rest)
+
   def differenz(a, b) when are_valid(a, b) do
     cond do
       not ueberschneidung?(a, b) -> [a]
