@@ -59,9 +59,25 @@ defmodule Shared.Datumsbereich do
   defmacrop beginn(range), do: quote(do: unquote(range).first_in_iso_days)
   defmacrop ende(range), do: quote(do: unquote(range).last_in_iso_days)
 
+  @doc """
+  Prüft, ob `range` ein aufsteigendes `Date.Range` mit `step: 1` ist.
+
+      iex> require Shared.Datumsbereich
+      iex> Shared.Datumsbereich.is_valid(Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      true
+      iex> Shared.Datumsbereich.is_valid(Date.range(~D[2025-01-05], ~D[2025-01-01], -1))
+      false
+  """
   defguard is_valid(range)
            when is_struct(range, Date.Range) and range.step == 1 and beginn(range) <= ende(range)
 
+  @doc """
+  Prüft, ob `a` und `b` gültige Datumsbereiche im Sinne von `is_valid/1` sind.
+
+      iex> require Shared.Datumsbereich
+      iex> Shared.Datumsbereich.are_valid(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-01])
+      false
+  """
   defguard are_valid(a, b) when is_valid(a) and is_valid(b)
 
   @doc """
@@ -205,6 +221,14 @@ defmodule Shared.Datumsbereich do
 
   # --- Boolesche Operationen ---
 
+  @doc """
+  Prüft, ob `a` und `b` mindestens einen gemeinsamen Tag haben.
+
+      iex> Shared.Datumsbereich.ueberschneidung?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-05])
+      true
+      iex> Shared.Datumsbereich.ueberschneidung?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-06])
+      false
+  """
   @spec ueberschneidung?(t(), t()) :: boolean()
   def ueberschneidung?(a, b) when are_valid(a, b),
     do: beginn(a) <= ende(b) and beginn(b) <= ende(a)
@@ -212,6 +236,14 @@ defmodule Shared.Datumsbereich do
   def ueberschneidung?(%_{} = a, %_{} = b),
     do: ueberschneidung?(to_date_range(a), to_date_range(b))
 
+  @doc """
+  Prüft, ob `a` vollständig in `b` enthalten ist.
+
+      iex> Shared.Datumsbereich.teil_von?(~D[2025-01-03], Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      true
+      iex> Shared.Datumsbereich.teil_von?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-03])
+      false
+  """
   @spec teil_von?(t(), t()) :: boolean()
   def teil_von?(a, b) when are_valid(a, b) do
     beginn(a) >= beginn(b) and ende(a) <= ende(b)
@@ -219,6 +251,12 @@ defmodule Shared.Datumsbereich do
 
   def teil_von?(%_{} = a, %_{} = b), do: teil_von?(to_date_range(a), to_date_range(b))
 
+  @doc """
+  Prüft, ob `a` vor `b` beginnt.
+
+      iex> Shared.Datumsbereich.beginnt_frueher?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-02])
+      true
+  """
   @spec beginnt_frueher?(t(), t()) :: boolean()
   def beginnt_frueher?(a, b) when are_valid(a, b),
     do: beginn(a) < beginn(b)
@@ -226,6 +264,12 @@ defmodule Shared.Datumsbereich do
   def beginnt_frueher?(%_{} = a, %_{} = b),
     do: beginnt_frueher?(to_date_range(a), to_date_range(b))
 
+  @doc """
+  Prüft, ob `a` nach `b` beginnt.
+
+      iex> Shared.Datumsbereich.beginnt_spaeter?(~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      true
+  """
   @spec beginnt_spaeter?(t(), t()) :: boolean()
   def beginnt_spaeter?(a, b) when are_valid(a, b),
     do: beginn(a) > beginn(b)
@@ -233,12 +277,24 @@ defmodule Shared.Datumsbereich do
   def beginnt_spaeter?(%_{} = a, %_{} = b),
     do: beginnt_spaeter?(to_date_range(a), to_date_range(b))
 
+  @doc """
+  Prüft, ob `a` vor `b` endet.
+
+      iex> Shared.Datumsbereich.endet_frueher?(~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      true
+  """
   @spec endet_frueher?(t(), t()) :: boolean()
   def endet_frueher?(a, b) when are_valid(a, b),
     do: ende(a) < ende(b)
 
   def endet_frueher?(%_{} = a, %_{} = b), do: endet_frueher?(to_date_range(a), to_date_range(b))
 
+  @doc """
+  Prüft, ob `a` nach `b` endet.
+
+      iex> Shared.Datumsbereich.endet_spaeter?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-02])
+      true
+  """
   @spec endet_spaeter?(t(), t()) :: boolean()
   def endet_spaeter?(a, b) when are_valid(a, b),
     do: ende(a) > ende(b)
@@ -247,6 +303,12 @@ defmodule Shared.Datumsbereich do
 
   # --- Mengenoperationen ---
 
+  @doc """
+  Liefert die Tage von `a`, die nicht in `b` liegen, als Liste von `Date.Range`s.
+
+      iex> Shared.Datumsbereich.differenz(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-03])
+      [Date.range(~D[2025-01-01], ~D[2025-01-02]), Date.range(~D[2025-01-04], ~D[2025-01-05])]
+  """
   @spec differenz(t(), t()) :: [Date.Range.t()]
   # todo: listen unterstützen
   def differenz(a, b) when are_valid(a, b) do
@@ -264,6 +326,12 @@ defmodule Shared.Datumsbereich do
   defp bis_vor(a, b), do: Date.range(a.first, Date.add(b.first, -1))
   defp beginnend_nach(a, b), do: Date.range(Date.add(b.last, 1), a.last)
 
+  @doc """
+  Liefert die gemeinsamen Tage von `a` und `b` oder `nil`, wenn es keine gibt.
+
+      iex> Shared.Datumsbereich.ueberschneidung(~D[2025-01-01], ~D[2025-01-02])
+      nil
+  """
   @spec ueberschneidung(t(), t()) :: Date.Range.t() | nil
   def ueberschneidung(a, b) when are_valid(a, b) do
     if ueberschneidung?(a, b) do
@@ -275,6 +343,13 @@ defmodule Shared.Datumsbereich do
 
   def ueberschneidung(%_{} = a, %_{} = b), do: ueberschneidung(to_date_range(a), to_date_range(b))
 
+  @doc """
+  Fasst überlappende und direkt aneinandergrenzende Datumsbereiche zusammen.
+  Das Ergebnis ist aufsteigend sortiert.
+
+      iex> Shared.Datumsbereich.vereinigung([~D[2025-01-04], Date.range(~D[2025-01-01], ~D[2025-01-03]), ~D[2025-01-10]])
+      [Date.range(~D[2025-01-01], ~D[2025-01-04]), Date.range(~D[2025-01-10], ~D[2025-01-10])]
+  """
   @spec vereinigung([t()]) :: [Date.Range.t()]
   def vereinigung(datumsbereiche) do
     datumsbereiche
@@ -299,6 +374,22 @@ defmodule Shared.Datumsbereich do
 
   # --- Ueberlagere (Sweep-Line auf Dates) ---
 
+  @doc """
+  Zerlegt die Datumsbereiche in überschneidungsfreie Abschnitte. Jeder Abschnitt
+  enthält die ursprünglichen Elemente, die ihn überdecken, siehe `Shared.Datumsbereich.Ueberlagerung`.
+
+      iex> Shared.Datumsbereich.ueberlagere([Date.range(~D[2025-01-01], ~D[2025-01-03]), ~D[2025-01-03]])
+      [
+        %Shared.Datumsbereich.Ueberlagerung{
+          datumsbereich: Date.range(~D[2025-01-01], ~D[2025-01-02]),
+          elemente: [Date.range(~D[2025-01-01], ~D[2025-01-03])]
+        },
+        %Shared.Datumsbereich.Ueberlagerung{
+          datumsbereich: Date.range(~D[2025-01-03], ~D[2025-01-03]),
+          elemente: [~D[2025-01-03], Date.range(~D[2025-01-01], ~D[2025-01-03])]
+        }
+      ]
+  """
   @spec ueberlagere([t()]) :: [Ueberlagerung.t()]
   def ueberlagere(datumsbereiche) do
     {abschnitte, [], _} =
@@ -352,9 +443,23 @@ defmodule Shared.Datumsbereich do
 
   # --- Vergleichsoperationen ---
 
+  @doc """
+  Sortiert Datumsbereiche nach Beginn und dann nach Ende, siehe `compare/2`.
+
+      iex> Shared.Datumsbereich.sort([~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-03])])
+      [Date.range(~D[2025-01-01], ~D[2025-01-03]), ~D[2025-01-02]]
+  """
   @spec sort(Enumerable.t(t())) :: list(t())
   def sort(bereiche), do: Enum.sort_by(bereiche, &to_date_range/1, __MODULE__)
 
+  @doc """
+  Vergleicht zuerst den Beginn und dann das Ende. Kann mit `Enum.sort/2` verwendet werden.
+
+      iex> Shared.Datumsbereich.compare(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-01])
+      :gt
+      iex> Enum.sort([~D[2025-01-02], ~D[2025-01-01]], Shared.Datumsbereich)
+      [~D[2025-01-01], ~D[2025-01-02]]
+  """
   @spec compare(t(), t()) :: :lt | :eq | :gt
   def compare(a, b) when are_valid(a, b) do
     a_tage = {beginn(a), ende(a)}
