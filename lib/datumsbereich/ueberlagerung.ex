@@ -16,7 +16,7 @@ defmodule Shared.Datumsbereich.Ueberlagerung do
 
   @behaviour Shared.Datumsbereich
 
-  @type t :: %__MODULE__{datumsbereich: Date.Range.t(), elemente: [Date.Range.t()]}
+  @type t :: %__MODULE__{datumsbereich: Date.Range.t(), elemente: [Shared.Datumsbereich.t()]}
 
   @enforce_keys [:datumsbereich, :elemente]
   defstruct [:datumsbereich, :elemente]

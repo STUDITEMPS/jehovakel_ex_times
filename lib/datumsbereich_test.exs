@@ -30,6 +30,79 @@ defmodule Shared.DatumsbereichTest do
     defstruct [:datumsbereich, :betrag]
   end
 
+  describe "Funktionen mit Structs" do
+    setup do
+      %{
+        urlaub: %MitDefaultKeys{beginn: ~D[2025-01-03], ende: ~D[2025-01-08]},
+        januar: Shared.Month.range(~m[2025-01], ~m[2025-01])
+      }
+    end
+
+    test "Prädikate wandeln Structs und Dates vorher um", %{urlaub: urlaub, januar: januar} do
+      assert Datumsbereich.ueberschneidung?(urlaub, ~D[2025-01-08])
+      refute Datumsbereich.ueberschneidung?(urlaub, ~D[2025-01-09])
+      assert Datumsbereich.teil_von?(urlaub, januar)
+      assert Datumsbereich.beginnt_frueher?(januar, urlaub)
+      assert Datumsbereich.beginnt_spaeter?(urlaub, ~D[2025-01-01])
+      assert Datumsbereich.endet_frueher?(urlaub, januar)
+      assert Datumsbereich.endet_spaeter?(urlaub, ~D[2025-01-05])
+    end
+
+    test "Mengenoperationen wandeln Structs und Dates vorher um", %{
+      urlaub: urlaub,
+      januar: januar
+    } do
+      assert [
+               Date.range(~D[2025-01-03], ~D[2025-01-04]),
+               Date.range(~D[2025-01-06], ~D[2025-01-08])
+             ] ==
+               Datumsbereich.differenz(urlaub, ~D[2025-01-05])
+
+      assert Date.range(~D[2025-01-03], ~D[2025-01-08]) ==
+               Datumsbereich.ueberschneidung(januar, urlaub)
+
+      assert [Date.range(~D[2025-01-01], ~D[2025-01-08])] ==
+               Datumsbereich.vereinigung([
+                 urlaub,
+                 ~D[2025-01-01],
+                 Date.range(~D[2025-01-02], ~D[2025-01-03])
+               ])
+    end
+
+    test "ueberlagere/1 behält die ursprünglichen Elemente", %{urlaub: urlaub} do
+      ueberlagerungen =
+        [urlaub, ~D[2025-01-05]]
+        |> Datumsbereich.ueberlagere()
+        |> Enum.map(&{&1.datumsbereich, &1.elemente})
+
+      assert [
+               {Date.range(~D[2025-01-03], ~D[2025-01-04]), [urlaub]},
+               {Date.range(~D[2025-01-05], ~D[2025-01-05]), [~D[2025-01-05], urlaub]},
+               {Date.range(~D[2025-01-06], ~D[2025-01-08]), [urlaub]}
+             ] == ueberlagerungen
+    end
+
+    test "compare/2 und dauer/2 wandeln Structs vorher um", %{urlaub: urlaub, januar: januar} do
+      assert :gt == Datumsbereich.compare(urlaub, januar)
+      assert 6 == Datumsbereich.dauer(urlaub, :days)
+      assert 24 == Datumsbereich.dauer(~D[2025-01-01], :hours)
+    end
+
+    test "ungültige Date.Ranges und Einheiten führen zu Fehlern statt Endlosschleifen" do
+      absteigend = Date.range(~D[2025-01-05], ~D[2025-01-01], -1)
+
+      assert_raise ArgumentError, fn ->
+        Datumsbereich.ueberschneidung?(absteigend, ~D[2025-01-01])
+      end
+
+      assert_raise ArgumentError, fn -> Datumsbereich.vereinigung([absteigend]) end
+
+      assert_raise FunctionClauseError, fn ->
+        Datumsbereich.dauer(Date.range(~D[2025-01-01], ~D[2025-01-31]), :months)
+      end
+    end
+  end
+
   describe "use Shared.Datumsbereich" do
     test "verwendet die Default-Keys beginn und ende" do
       struct = %MitDefaultKeys{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]}

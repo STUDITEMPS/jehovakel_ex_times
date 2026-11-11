@@ -37,7 +37,32 @@ defmodule Shared.Datumsbereich do
 
   alias Shared.Datumsbereich.Ueberlagerung
 
+  @typedoc """
+  Ein Datumsbereich ist eine `t:Date.Range.t/1` oder ein struct das mit
+  `to_date_range/1` in eine date range konvertiert werden kann.
+
+  Das sind `t:Date.t/1` oder ein struct dessen module `c:to_date_range/1` implementiert.
+  """
+  @type t ::
+          %Date.Range{
+            first: Date.t(),
+            first_in_iso_days: integer,
+            last: Date.t(),
+            last_in_iso_days: integer,
+            step: 1
+          }
+          | Date.t()
+          | struct()
+
   @callback to_date_range(struct()) :: Date.Range.t()
+
+  defmacrop beginn(range), do: quote(do: unquote(range).first_in_iso_days)
+  defmacrop ende(range), do: quote(do: unquote(range).last_in_iso_days)
+
+  defguard is_valid(range)
+           when is_struct(range, Date.Range) and range.step == 1 and beginn(range) <= ende(range)
+
+  defguard are_valid(a, b) when is_valid(a) and is_valid(b)
 
   @doc """
   Implementiert `c:to_date_range/1` im aufrufenden Struct-Modul.
@@ -144,9 +169,18 @@ defmodule Shared.Datumsbereich do
 
       iex> Shared.Datumsbereich.to_date_range(~N[2025-01-01 12:00:00])
       ** (ArgumentError) ~N[2025-01-01 12:00:00] ist kein Date.Range und implementiert kein to_date_range/1
+
+      iex> Shared.Datumsbereich.to_date_range(Date.range(~D[2025-01-05], ~D[2025-01-01], -1))
+      ** (ArgumentError) Date.range(~D[2025-01-05], ~D[2025-01-01], -1) wird nicht unterstützt, nur aufsteigende Date.Ranges mit step 1
   """
-  @spec to_date_range(Date.t() | Date.Range.t() | struct()) :: Date.Range.t()
-  def to_date_range(%Date.Range{} = range), do: range
+  @spec to_date_range(t()) :: Date.Range.t()
+  def to_date_range(range) when is_valid(range), do: range
+
+  def to_date_range(%Date.Range{} = range) do
+    raise ArgumentError,
+          "#{inspect(range)} wird nicht unterstützt, nur aufsteigende Date.Ranges mit step 1"
+  end
+
   def to_date_range(%Date{} = datum), do: Date.range(datum, datum)
 
   def to_date_range(%modul{} = wert) do
@@ -169,60 +203,68 @@ defmodule Shared.Datumsbereich do
     end
   end
 
-  defmacrop beginn(range), do: quote(do: unquote(range).first_in_iso_days)
-  defmacrop ende(range), do: quote(do: unquote(range).last_in_iso_days)
-
-  defguard is_valid(range)
-           when is_struct(range, Date.Range) and range.step == 1 and beginn(range) <= ende(range)
-
-  defguard are_valid(a, b) when is_valid(a) and is_valid(b)
-
   # --- Boolesche Operationen ---
 
-  @spec ueberschneidung?(Date.Range.t(), Date.Range.t()) :: boolean()
-  def ueberschneidung?(a, b) when are_valid(a, b) do
-    beginn(a) <= ende(b) and beginn(b) <= ende(a)
+  @spec ueberschneidung?(t(), t()) :: boolean()
+  def ueberschneidung?(a, b) when are_valid(a, b),
+    do: beginn(a) <= ende(b) and beginn(b) <= ende(a)
+
+  def ueberschneidung?(%_{} = a, %_{} = b),
+    do: ueberschneidung?(to_date_range(a), to_date_range(b))
+
+  @spec teil_von?(t(), t()) :: boolean()
+  def teil_von?(a, b) when are_valid(a, b) do
+    beginn(a) >= beginn(b) and ende(a) <= ende(b)
   end
 
-  @spec teil_von?(Date.Range.t(), Date.Range.t()) :: boolean()
-  def teil_von?(zu_testend, zeitraum) when are_valid(zu_testend, zeitraum) do
-    beginn(zu_testend) >= beginn(zeitraum) and
-      ende(zu_testend) <= ende(zeitraum)
-  end
+  def teil_von?(%_{} = a, %_{} = b), do: teil_von?(to_date_range(a), to_date_range(b))
 
-  @spec beginnt_frueher?(Date.Range.t(), Date.Range.t()) :: boolean()
+  @spec beginnt_frueher?(t(), t()) :: boolean()
   def beginnt_frueher?(a, b) when are_valid(a, b),
     do: beginn(a) < beginn(b)
 
-  @spec beginnt_spaeter?(Date.Range.t(), Date.Range.t()) :: boolean()
+  def beginnt_frueher?(%_{} = a, %_{} = b),
+    do: beginnt_frueher?(to_date_range(a), to_date_range(b))
+
+  @spec beginnt_spaeter?(t(), t()) :: boolean()
   def beginnt_spaeter?(a, b) when are_valid(a, b),
     do: beginn(a) > beginn(b)
 
-  @spec endet_frueher?(Date.Range.t(), Date.Range.t()) :: boolean()
+  def beginnt_spaeter?(%_{} = a, %_{} = b),
+    do: beginnt_spaeter?(to_date_range(a), to_date_range(b))
+
+  @spec endet_frueher?(t(), t()) :: boolean()
   def endet_frueher?(a, b) when are_valid(a, b),
     do: ende(a) < ende(b)
 
-  @spec endet_spaeter?(Date.Range.t(), Date.Range.t()) :: boolean()
+  def endet_frueher?(%_{} = a, %_{} = b), do: endet_frueher?(to_date_range(a), to_date_range(b))
+
+  @spec endet_spaeter?(t(), t()) :: boolean()
   def endet_spaeter?(a, b) when are_valid(a, b),
     do: ende(a) > ende(b)
 
+  def endet_spaeter?(%_{} = a, %_{} = b), do: endet_spaeter?(to_date_range(a), to_date_range(b))
+
   # --- Mengenoperationen ---
 
-  @spec differenz(Date.Range.t(), Date.Range.t()) :: [Date.Range.t()]
+  @spec differenz(t(), t()) :: [Date.Range.t()]
+  # todo: listen unterstützen
   def differenz(a, b) when are_valid(a, b) do
     cond do
       not ueberschneidung?(a, b) -> [a]
       teil_von?(a, b) -> []
-      not beginnt_spaeter?(b, a) -> [teil_nach(a, b)]
-      not endet_frueher?(b, a) -> [teil_vor(a, b)]
-      true -> [teil_vor(a, b), teil_nach(a, b)]
+      not beginnt_spaeter?(b, a) -> [beginnend_nach(a, b)]
+      not endet_frueher?(b, a) -> [bis_vor(a, b)]
+      true -> [bis_vor(a, b), beginnend_nach(a, b)]
     end
   end
 
-  defp teil_vor(a, b), do: Date.range(a.first, Date.add(b.first, -1))
-  defp teil_nach(a, b), do: Date.range(Date.add(b.last, 1), a.last)
+  def differenz(%_{} = a, %_{} = b), do: differenz(to_date_range(a), to_date_range(b))
 
-  @spec ueberschneidung(Date.Range.t(), Date.Range.t()) :: Date.Range.t() | nil
+  defp bis_vor(a, b), do: Date.range(a.first, Date.add(b.first, -1))
+  defp beginnend_nach(a, b), do: Date.range(Date.add(b.last, 1), a.last)
+
+  @spec ueberschneidung(t(), t()) :: Date.Range.t() | nil
   def ueberschneidung(a, b) when are_valid(a, b) do
     if ueberschneidung?(a, b) do
       erster_tag = if beginnt_spaeter?(a, b), do: a.first, else: b.first
@@ -231,9 +273,12 @@ defmodule Shared.Datumsbereich do
     end
   end
 
-  @spec vereinigung([Date.Range.t()]) :: [Date.Range.t()]
-  def vereinigung(ranges) do
-    ranges
+  def ueberschneidung(%_{} = a, %_{} = b), do: ueberschneidung(to_date_range(a), to_date_range(b))
+
+  @spec vereinigung([t()]) :: [Date.Range.t()]
+  def vereinigung(datumsbereiche) do
+    datumsbereiche
+    |> Enum.map(&to_date_range/1)
     |> Enum.sort_by(&beginn/1)
     |> vereinige()
   end
@@ -254,10 +299,10 @@ defmodule Shared.Datumsbereich do
 
   # --- Ueberlagere (Sweep-Line auf Dates) ---
 
-  @spec ueberlagere([Date.Range.t()]) :: [Ueberlagerung.t()]
-  def ueberlagere(ranges) do
+  @spec ueberlagere([t()]) :: [Ueberlagerung.t()]
+  def ueberlagere(datumsbereiche) do
     {abschnitte, [], _} =
-      ranges
+      datumsbereiche
       |> Enum.flat_map(&grenzen/1)
       |> Enum.sort()
       |> Enum.reduce({[], [], nil}, &verarbeite_grenze/2)
@@ -267,31 +312,36 @@ defmodule Shared.Datumsbereich do
 
   # Das Ende liegt rechts-offen auf dem Folgetag, damit ein Range, der an diesem Tag
   # beginnt, nahtlos anschließt. Da :ende < :start sortiert, wird das Ende zuerst verarbeitet.
-  defp grenzen(range) when is_valid(range) do
+  defp grenzen(element) do
+    range = to_date_range(element)
+
     [
-      {beginn(range), :start, range.first, range},
-      {ende(range) + 1, :ende, Date.add(range.last, 1), range}
+      {beginn(range), :start, range.first, element},
+      {ende(range) + 1, :ende, Date.add(range.last, 1), element}
     ]
   end
 
-  defp verarbeite_grenze({tag, :start, datum, range}, {abschnitte, [], _}) do
-    {abschnitte, [range], {tag, datum}}
+  defp verarbeite_grenze({iso_tag, :start, datum, element}, {abschnitte, [], _}) do
+    {abschnitte, [element], {iso_tag, datum}}
   end
 
-  defp verarbeite_grenze({tag, typ, _, range}, {abschnitte, aktive, {tag, _} = letzte_grenze}) do
-    {abschnitte, aktualisiere(aktive, typ, range), letzte_grenze}
+  defp verarbeite_grenze(
+         {iso_tag, typ, _, element},
+         {abschnitte, aktive, {iso_tag, _} = letzte_grenze}
+       ) do
+    {abschnitte, aktualisiere(aktive, typ, element), letzte_grenze}
   end
 
-  defp verarbeite_grenze({tag, typ, datum, range}, {abschnitte, aktive, {_, von}}) do
+  defp verarbeite_grenze({iso_tag, typ, datum, element}, {abschnitte, aktive, {_, von}}) do
     {
       [abschnitt(von, datum, aktive) | abschnitte],
-      aktualisiere(aktive, typ, range),
-      {tag, datum}
+      aktualisiere(aktive, typ, element),
+      {iso_tag, datum}
     }
   end
 
-  defp aktualisiere(aktive, :start, range), do: [range | aktive]
-  defp aktualisiere(aktive, :ende, range), do: List.delete(aktive, range)
+  defp aktualisiere(aktive, :start, element), do: [element | aktive]
+  defp aktualisiere(aktive, :ende, element), do: List.delete(aktive, element)
 
   defp abschnitt(von, bis_exklusiv, aktive) do
     %Ueberlagerung{
@@ -302,7 +352,10 @@ defmodule Shared.Datumsbereich do
 
   # --- Vergleichsoperationen ---
 
-  @spec compare(Date.Range.t(), Date.Range.t()) :: :lt | :eq | :gt
+  @spec sort(Enumerable.t(t())) :: list(t())
+  def sort(bereiche), do: Enum.sort_by(bereiche, &to_date_range/1, __MODULE__)
+
+  @spec compare(t(), t()) :: :lt | :eq | :gt
   def compare(a, b) when are_valid(a, b) do
     a_tage = {beginn(a), ende(a)}
     b_tage = {beginn(b), ende(b)}
@@ -314,6 +367,8 @@ defmodule Shared.Datumsbereich do
     end
   end
 
+  def compare(%_{} = a, %_{} = b), do: compare(to_date_range(a), to_date_range(b))
+
   # --- Dauer ---
 
   @type einheit :: :duration | :days | :hours | :minutes | :seconds | :weeks
@@ -321,7 +376,7 @@ defmodule Shared.Datumsbereich do
   defguard is_einheit(einheit)
            when einheit in [:duration, :days, :hours, :minutes, :seconds, :weeks]
 
-  @spec dauer(Date.Range.t(), einheit()) :: non_neg_integer() | Timex.Duration.t()
+  @spec dauer(t(), einheit()) :: non_neg_integer() | Timex.Duration.t()
   def dauer(range, einheit) when is_valid(range) and is_einheit(einheit) do
     tage = ende(range) - beginn(range) + 1
 
@@ -334,4 +389,7 @@ defmodule Shared.Datumsbereich do
       :weeks -> div(tage, 7)
     end
   end
+
+  def dauer(%_{} = datumsbereich, einheit) when is_einheit(einheit),
+    do: dauer(to_date_range(datumsbereich), einheit)
 end
