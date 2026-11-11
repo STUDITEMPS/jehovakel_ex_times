@@ -62,6 +62,13 @@ defmodule Shared.DatumsbereichTest do
                MitDatumsbereichKey.to_date_range(%MitDatumsbereichKey{datumsbereich: range})
     end
 
+    test "macht aus einem Date im datumsbereich-Key einen eintägigen Date.Range" do
+      assert Date.range(~D[2025-02-01], ~D[2025-02-01]) ==
+               MitDatumsbereichKey.to_date_range(%MitDatumsbereichKey{
+                 datumsbereich: ~D[2025-02-01]
+               })
+    end
+
     test "ruft to_date_range/1 des Structs im datumsbereich-Key auf" do
       urlaub = %MitDefaultKeys{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]}
 

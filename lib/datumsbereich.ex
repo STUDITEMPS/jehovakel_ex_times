@@ -46,8 +46,8 @@ defmodule Shared.Datumsbereich do
 
   ## Optionen
 
-    * `:datumsbereich` – Feld mit einem `Date.Range` oder einem Struct, dessen Modul
-      selbst `to_date_range/1` implementiert.
+    * `:datumsbereich` – Feld mit einem `Date`, einem `Date.Range` oder einem
+      Struct, dessen Modul selbst `to_date_range/1` implementiert.
     * `:beginn` – Feld mit dem ersten Tag als `Date`. Default ist `:beginn`,
       bzw. `:start`, wenn das Struct kein Feld `:beginn`, aber ein Feld `:start` hat.
     * `:ende` – Feld mit dem letzten Tag (inklusive) als `Date`. Default ist `:ende`.
@@ -127,7 +127,8 @@ defmodule Shared.Datumsbereich do
   end
 
   @doc """
-  Liefert ein `Date.Range` unverändert zurück. Bei einem Struct, dessen Modul
+  Liefert ein `Date.Range` unverändert zurück und macht aus einem `Date` ein
+  `Date.Range` über diesen einen Tag. Bei einem Struct, dessen Modul
   `to_date_range/1` implementiert, wird diese Funktion aufgerufen.
 
   ## Beispiele
@@ -139,10 +140,14 @@ defmodule Shared.Datumsbereich do
       Date.range(~D[2024-12-30], ~D[2025-01-12])
 
       iex> Shared.Datumsbereich.to_date_range(~D[2025-01-01])
-      ** (ArgumentError) ~D[2025-01-01] ist kein Date.Range und implementiert kein to_date_range/1
+      Date.range(~D[2025-01-01], ~D[2025-01-01])
+
+      iex> Shared.Datumsbereich.to_date_range(~N[2025-01-01 12:00:00])
+      ** (ArgumentError) ~N[2025-01-01 12:00:00] ist kein Date.Range und implementiert kein to_date_range/1
   """
-  @spec to_date_range(Date.Range.t() | struct()) :: Date.Range.t()
+  @spec to_date_range(Date.t() | Date.Range.t() | struct()) :: Date.Range.t()
   def to_date_range(%Date.Range{} = range), do: range
+  def to_date_range(%Date{} = datum), do: Date.range(datum, datum)
 
   def to_date_range(%modul{} = wert) do
     if Code.ensure_loaded?(modul) and function_exported?(modul, :to_date_range, 1),
