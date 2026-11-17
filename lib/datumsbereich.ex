@@ -80,6 +80,9 @@ defmodule Shared.Datumsbereich do
   """
   defguard are_valid(a, b) when is_valid(a) and is_valid(b)
 
+  # Nur private, da a & b sortiert sein müssen.
+  defguardp luecke_besteht(a, b) when ende(a) + 1 < beginn(b)
+
   @doc """
   Implementiert `c:to_date_range/1` im aufrufenden Struct-Modul.
 
@@ -371,22 +374,23 @@ defmodule Shared.Datumsbereich do
     datumsbereiche
     |> Enum.map(&to_date_range/1)
     |> Enum.sort_by(&beginn/1)
-    |> vereinige()
+    |> vereinige([])
+    |> Enum.reverse()
   end
 
-  defp vereinige([]), do: []
-  defp vereinige([range]) when is_valid(range), do: [range]
+  defp vereinige([], acc), do: acc
+  defp vereinige([a | rest], acc), do: vereinige(a, a, rest, acc)
 
-  defp vereinige([a, b | rest]) when are_valid(a, b) do
-    if besteht_luecke?(a, b) do
-      [a | vereinige([b | rest])]
-    else
-      letzter_tag = if endet_spaeter?(a, b), do: a.last, else: b.last
-      vereinige([Date.range(a.first, letzter_tag) | rest])
-    end
-  end
+  # beginn ist der erste Bereich des aktuellen Abschnitts, a der Bereich mit dem
+  # bisher spätesten Ende.
+  defp vereinige(beginn, a, [b | rest], acc) when not luecke_besteht(a, b),
+    do: vereinige(beginn, if(ende(b) > ende(a), do: b, else: a), rest, acc)
 
-  defp besteht_luecke?(a, b), do: beginn(b) - ende(a) > 1
+  defp vereinige(beginn, a, rest, acc),
+    do: vereinige(rest, [verlaengere_bis_ende(beginn, a) | acc])
+
+  defp verlaengere_bis_ende(a, b),
+    do: %{a | last: Date.convert!(b.last, a.first.calendar), last_in_iso_days: ende(b)}
 
   # --- Ueberlagere (Sweep-Line auf Dates) ---
 
