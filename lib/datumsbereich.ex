@@ -559,11 +559,14 @@ defmodule Shared.Datumsbereich do
   defp aktualisiere(aktive, :start, element), do: [element | aktive]
   defp aktualisiere(aktive, :ende, element), do: List.delete(aktive, element)
 
+  # struct!/2 statt %Ueberlagerung{}, weil Ueberlagerung dieses Modul als Behaviour nutzt.
+  # Eine Compile-Zeit-Abhängigkeit in beide Richtungen blockiert sonst den Compiler,
+  # und die defimpls für Shared.Month und Shared.Week finden ihre Module nicht.
   defp abschnitt(von, bis_exklusiv, aktive) do
-    %Ueberlagerung{
+    struct!(Ueberlagerung,
       datumsbereich: Date.range(von, Date.convert!(Date.add(bis_exklusiv, -1), von.calendar)),
       elemente: aktive
-    }
+    )
   end
 
   defp to_iso_day_tuple(range) when is_valid(range), do: {beginn(range), ende(range)}
