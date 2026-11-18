@@ -324,26 +324,35 @@ defmodule Shared.Datumsbereich do
       ]
   """
   @spec differenz(t() | [t()], t() | [t()]) :: [Date.Range.t()]
-  def differenz(basis, abzuziehen) when is_list(basis),
-    do: Enum.flat_map(basis, &differenz(&1, abzuziehen))
-
-  def differenz(basis, []), do: [to_date_range(basis)]
-  def differenz(basis, [abzuziehen | rest]), do: basis |> differenz(abzuziehen) |> differenz(rest)
-
-  def differenz(a, b) when are_valid(a, b) do
-    cond do
-      not ueberschneidung?(a, b) -> [a]
-      teil_von?(a, b) -> []
-      not beginnt_spaeter?(b, a) -> [beginnend_nach(a, b)]
-      not endet_frueher?(b, a) -> [bis_vor(a, b)]
-      true -> [bis_vor(a, b), beginnend_nach(a, b)]
-    end
+  def differenz(basis, abzuziehen) do
+    abzuziehen = List.to_tuple(vereinigung(List.wrap(abzuziehen)))
+    Enum.flat_map(List.wrap(basis), &diff(to_date_range(&1), abzuziehen))
   end
 
-  def differenz(%_{} = a, %_{} = b), do: differenz(to_date_range(a), to_date_range(b))
+  # abzuziehen ist ein Tupel sortierter, disjunkter Date.Ranges, damit der erste
+  # relevante Abzug per binärer Suche gefunden werden kann.
+  defp diff(range, abzuziehen), do: diff(range, abzuziehen, index_nicht_vor(abzuziehen, range))
 
-  defp bis_vor(a, b), do: Date.range(a.first, Date.add(b.first, -1))
-  defp beginnend_nach(a, b), do: Date.range(Date.add(b.last, 1), a.last)
+  defp diff(range, abzuziehen, index)
+       when index >= tuple_size(abzuziehen)
+       when ende(range) < beginn(elem(abzuziehen, index)),
+       do: [range]
+
+  defp diff(range, abzuziehen, index) do
+    abzug = elem(abzuziehen, index)
+
+    rest =
+      if ende(abzug) < ende(range),
+        do: diff(beginnend_nach(range, abzug), abzuziehen, index + 1),
+        else: []
+
+    if beginn(range) < beginn(abzug),
+      do: [bis_vor(range, abzug) | rest],
+      else: rest
+  end
+
+  defp bis_vor(range, abzug), do: bis_iso_tag(range, beginn(abzug) - 1)
+  defp beginnend_nach(range, abzug), do: ab_iso_tag(range, ende(abzug) + 1)
 
   @doc """
   Liefert die gemeinsamen Tage von `a` und `b` oder `nil`, wenn es keine gibt.
@@ -509,4 +518,29 @@ defmodule Shared.Datumsbereich do
   @spec dauer(t()) :: pos_integer()
   def dauer(range) when is_valid(range), do: ende(range) - beginn(range) + 1
   def dauer(%_{} = datumsbereich), do: dauer(to_date_range(datumsbereich))
+
+  defp index_nicht_vor(ranges, %{} = range) when is_tuple(ranges),
+    do: index_nicht_vor(ranges, beginn(range), 0, tuple_size(ranges))
+
+  defp index_nicht_vor(ranges, tag, von, bis) when von < bis do
+    mitte = div(von + bis, 2)
+    datumsbereich = elem(ranges, mitte)
+
+    if ende(datumsbereich) < tag,
+      do: index_nicht_vor(ranges, tag, mitte + 1, bis),
+      else: index_nicht_vor(ranges, tag, von, mitte)
+  end
+
+  defp index_nicht_vor(_ranges, _tag, von, _bis), do: von
+
+  defp ab_iso_tag(range, iso_tag),
+    do: %{range | first: iso_to_date(iso_tag, range.first.calendar), first_in_iso_days: iso_tag}
+
+  defp bis_iso_tag(range, iso_tag),
+    do: %{range | last: iso_to_date(iso_tag, range.first.calendar), last_in_iso_days: iso_tag}
+
+  # Date.from_gregorian_days/2 schlägt für andere Kalender als Calendar.ISO fehl, daher
+  # wird das Date anschließend in den gewünschten Kalender umgewandelt.
+  defp iso_to_date(tag, kalender),
+    do: tag |> Date.from_gregorian_days() |> Date.convert!(kalender)
 end

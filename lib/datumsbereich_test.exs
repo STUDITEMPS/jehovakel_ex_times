@@ -30,6 +30,52 @@ defmodule Shared.DatumsbereichTest do
     defstruct [:datumsbereich, :betrag]
   end
 
+  defmodule Kalender do
+    @moduledoc false
+    @behaviour Calendar
+
+    Code.ensure_loaded!(Calendar.ISO)
+
+    for {name, stelligkeit} <- Calendar.behaviour_info(:callbacks),
+        function_exported?(Calendar.ISO, name, stelligkeit) do
+      argumente = Macro.generate_arguments(stelligkeit, __MODULE__)
+      @impl Calendar
+      def unquote(name)(unquote_splicing(argumente)),
+        do: Calendar.ISO.unquote(name)(unquote_splicing(argumente))
+    end
+  end
+
+  describe "andere Kalender" do
+    setup do
+      im_kalender = &Date.convert!(&1, Kalender)
+
+      %{
+        k: im_kalender,
+        basis: Date.range(im_kalender.(~D[2025-01-01]), im_kalender.(~D[2025-01-10]))
+      }
+    end
+
+    test "differenz/2 liefert Ergebnisse im Kalender der Basis", %{
+      k: k,
+      basis: basis
+    } do
+      abzuziehen = [~D[2025-01-03], Date.range(~D[2025-01-06], ~D[2025-01-07])]
+
+      erwartet = [
+        Date.range(k.(~D[2025-01-01]), k.(~D[2025-01-02])),
+        Date.range(k.(~D[2025-01-04]), k.(~D[2025-01-05])),
+        Date.range(k.(~D[2025-01-08]), k.(~D[2025-01-10]))
+      ]
+
+      assert erwartet == Datumsbereich.differenz(basis, abzuziehen)
+
+      assert [
+               Date.range(k.(~D[2025-01-01]), k.(~D[2025-01-02])),
+               Date.range(k.(~D[2025-01-04]), k.(~D[2025-01-10]))
+             ] == Datumsbereich.differenz(basis, ~D[2025-01-03])
+    end
+  end
+
   describe "Funktionen mit Structs" do
     setup do
       %{
@@ -90,6 +136,49 @@ defmodule Shared.DatumsbereichTest do
                    ~D[2025-01-13]
                  ]
                )
+    end
+
+    test "differenz/2 mit unsortierten und überlappenden Abzügen" do
+      assert [
+               Date.range(~D[2025-01-01], ~D[2025-01-01]),
+               Date.range(~D[2025-01-07], ~D[2025-01-07]),
+               Date.range(~D[2025-01-10], ~D[2025-01-10])
+             ] ==
+               Datumsbereich.differenz(Date.range(~D[2025-01-01], ~D[2025-01-10]), [
+                 ~D[2025-01-08],
+                 Date.range(~D[2025-01-04], ~D[2025-01-06]),
+                 Date.range(~D[2025-01-02], ~D[2025-01-05]),
+                 ~D[2025-01-09]
+               ])
+    end
+
+    test "differenz/2 mit Listen entspricht dem paarweisen Abziehen" do
+      :rand.seed(:exsss, {1, 2, 3})
+
+      zufaelliger_bereich = fn ->
+        start = Date.add(~D[2025-01-01], :rand.uniform(60))
+
+        if :rand.uniform(3) == 1,
+          do: start,
+          else: Date.range(start, Date.add(start, :rand.uniform(15) - 1))
+      end
+
+      paarweise = fn basis, abzuziehen ->
+        Enum.flat_map(basis, fn bereich ->
+          Enum.reduce(abzuziehen, [Datumsbereich.to_date_range(bereich)], fn b, teile ->
+            Enum.flat_map(teile, &Datumsbereich.differenz(&1, b))
+          end)
+        end)
+      end
+
+      for _ <- 1..500 do
+        basis = for _ <- 1..:rand.uniform(5), do: zufaelliger_bereich.()
+        abzuziehen = for _ <- 0..:rand.uniform(8), do: zufaelliger_bereich.()
+
+        erwartet = paarweise.(basis, abzuziehen)
+
+        assert erwartet == Datumsbereich.differenz(basis, abzuziehen)
+      end
     end
 
     test "ueberlagere/1 behält die ursprünglichen Elemente", %{urlaub: urlaub} do
