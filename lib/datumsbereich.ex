@@ -54,7 +54,7 @@ defmodule Shared.Datumsbereich do
           | Date.t()
           | struct()
 
-  @callback to_date_range(struct()) :: Date.Range.t()
+  @callback to_date_range(struct()) :: t()
 
   defmacrop beginn(range), do: quote(do: unquote(range).first_in_iso_days)
   defmacrop ende(range), do: quote(do: unquote(range).last_in_iso_days)
@@ -148,8 +148,7 @@ defmodule Shared.Datumsbereich do
 
       quote do
         @impl Shared.Datumsbereich
-        def to_date_range(%__MODULE__{} = struct),
-          do: Shared.Datumsbereich.to_date_range(struct.unquote(datumsbereich_key))
+        def to_date_range(%__MODULE__{} = struct), do: struct.unquote(datumsbereich_key)
       end
     else
       default = if :beginn not in struct_keys and :start in struct_keys, do: :start, else: :beginn
@@ -203,16 +202,11 @@ defmodule Shared.Datumsbereich do
   def to_date_range(%Date{} = datum), do: Date.range(datum, datum)
 
   def to_date_range(%modul{} = wert) do
-    if Code.ensure_loaded?(modul) and function_exported?(modul, :to_date_range, 1),
-      do: modul.to_date_range(wert),
-      else: kein_date_range!(wert)
-  end
-
-  def to_date_range(wert), do: kein_date_range!(wert)
-
-  defp kein_date_range!(wert) do
-    raise ArgumentError,
-          "#{inspect(wert)} ist kein Date.Range und implementiert kein to_date_range/1"
+    if Code.ensure_loaded?(modul) and function_exported?(modul, :to_date_range, 1) do
+      to_date_range(modul.to_date_range(wert))
+    else
+      raise ArgumentError, "#{inspect(modul)} implementiert kein to_date_range/1"
+    end
   end
 
   defp validiere_key!(key, struct_keys, module) do
@@ -365,7 +359,8 @@ defmodule Shared.Datumsbereich do
     if ueberschneidung?(a, b) do
       erster_tag = if beginnt_spaeter?(a, b), do: a.first, else: b.first
       letzter_tag = if endet_frueher?(a, b), do: a.last, else: b.last
-      Date.range(erster_tag, letzter_tag)
+      kalender = a.first.calendar
+      Date.range(Date.convert!(erster_tag, kalender), Date.convert!(letzter_tag, kalender))
     end
   end
 
@@ -464,7 +459,7 @@ defmodule Shared.Datumsbereich do
 
   defp abschnitt(von, bis_exklusiv, aktive) do
     %Ueberlagerung{
-      datumsbereich: Date.range(von, Date.add(bis_exklusiv, -1)),
+      datumsbereich: Date.range(von, Date.convert!(Date.add(bis_exklusiv, -1), von.calendar)),
       elemente: aktive
     }
   end

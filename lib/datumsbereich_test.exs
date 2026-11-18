@@ -74,6 +74,32 @@ defmodule Shared.DatumsbereichTest do
                Date.range(k.(~D[2025-01-04]), k.(~D[2025-01-10]))
              ] == Datumsbereich.differenz(basis, ~D[2025-01-03])
     end
+
+    test "ueberschneidung/2 liefert das Ergebnis im Kalender des ersten Arguments", %{
+      k: k,
+      basis: basis
+    } do
+      assert Date.range(k.(~D[2025-01-05]), k.(~D[2025-01-10])) ==
+               Datumsbereich.ueberschneidung(basis, Date.range(~D[2025-01-05], ~D[2025-01-20]))
+    end
+
+    test "vereinigung/1 liefert Abschnitte im Kalender ihres ersten Bereichs", %{
+      k: k,
+      basis: basis
+    } do
+      assert [Date.range(k.(~D[2025-01-01]), k.(~D[2025-01-15]))] ==
+               Datumsbereich.vereinigung([basis, Date.range(~D[2025-01-08], ~D[2025-01-15])])
+    end
+
+    test "ueberlagere/1 liefert Abschnitte im Kalender ihres Beginns", %{k: k, basis: basis} do
+      assert [
+               Date.range(k.(~D[2025-01-01]), k.(~D[2025-01-09])),
+               Date.range(~D[2025-01-10], ~D[2025-01-10])
+             ] ==
+               [basis, ~D[2025-01-10]]
+               |> Datumsbereich.ueberlagere()
+               |> Enum.map(& &1.datumsbereich)
+    end
   end
 
   describe "Funktionen mit Structs" do
