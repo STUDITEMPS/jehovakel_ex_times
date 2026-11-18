@@ -208,6 +208,14 @@ defmodule Shared.DatumsbereichTest do
   end
 
   describe "to_date_range/1" do
+    test "wirft einen Fehler, wenn ende vor beginn liegt, statt den Bereich umzudrehen" do
+      struct = %MitDefaultKeys{beginn: ~D[2025-07-14], ende: ~D[2025-07-01]}
+
+      assert_raise ArgumentError, ~r/wird nicht unterstützt/, fn ->
+        Datumsbereich.to_date_range(struct)
+      end
+    end
+
     test "macht aus einem Date im datumsbereich-Key einen eintägigen Date.Range" do
       assert Date.range(~D[2025-02-01], ~D[2025-02-01]) ==
                Datumsbereich.to_date_range(%MitDatumsbereichKey{datumsbereich: ~D[2025-02-01]})

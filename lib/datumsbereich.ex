@@ -2,9 +2,9 @@ defmodule Shared.Datumsbereich do
   @moduledoc """
   Funktionen für ganztägige Zeiträume auf Basis von `t:Date.Range.t/0`.
 
-  Gerechnet wird direkt auf den ISO-Tagen der Ranges. Unterstützt werden
-  aufsteigende Ranges mit `step: 1`, siehe `is_valid/1`. Absteigende Ranges mit
-  `step: -1` werden von `to_date_range/1` umgedreht.
+  Gerechnet wird direkt auf den ISO-Tagen der Ranges. Alle Funktionen wandeln
+  ihre Argumente mit `to_date_range/1` in nicht leere, aufsteigende Ranges mit
+  `step: 1` um. Absteigende Ranges mit `step: -1` werden dabei umgedreht.
 
   ## Beispiele
 
@@ -28,9 +28,10 @@ defmodule Shared.Datumsbereich do
 
   ## Eigene Structs als Datumsbereich
 
-  Mit `use Shared.Datumsbereich` bekommt ein Struct eine Funktion
-  `to_date_range/1`, siehe `__using__/1`. `to_date_range/1` wandelt solche
-  Structs in ein `Date.Range` um:
+  Ein Struct-Modul wird zum Datumsbereich, indem es `c:to_date_range/1`
+  implementiert, direkt oder mit `use Shared.Datumsbereich`, siehe `__using__/1`.
+  `Shared.Month`, `Shared.Week` und ihre Ranges tun das bereits.
+  `to_date_range/1` wandelt solche Structs in ein `Date.Range` um:
 
       iex> to_date_range(Shared.Month.range(~m[2025-01], ~m[2025-02]))
       Date.range(~D[2025-01-01], ~D[2025-02-28])
@@ -39,10 +40,8 @@ defmodule Shared.Datumsbereich do
   alias Shared.Datumsbereich.Ueberlagerung
 
   @typedoc """
-  Ein Datumsbereich ist eine `t:Date.Range.t/1` oder ein struct das mit
-  `to_date_range/1` in eine date range konvertiert werden kann.
-
-  Das sind `t:Date.t/1` oder ein struct dessen module `c:to_date_range/1` implementiert.
+  Ein `t:Date.Range.t/0` mit `step: 1` oder `-1`, ein `t:Date.t/0` oder ein
+  Struct, dessen Modul `c:to_date_range/1` implementiert.
   """
   @type t ::
           %Date.Range{
@@ -56,16 +55,14 @@ defmodule Shared.Datumsbereich do
           | struct()
 
   @doc """
-  Gibt einen Datumsbereich `t:t/0` für ein struct zurück.
+  Gibt den Datumsbereich `t:t/0` eines Structs zurück.
 
-  Diesen Callback sollen die module von structs implementieren, die eine Art
-  Datumsbereich beschreiben. Das kann beispielsweise eine Woche (`Shared.Week`)
-  sein, oder auch ein Struct das Schulferien beschreibt.
+  Diesen Callback implementieren Module von Structs, die einen Zeitraum
+  beschreiben, zum Beispiel eine Woche (`Shared.Week`) oder Schulferien.
 
-  Es muss eine non-empty Date Range mit step size 1 oder -1 zurück gegeben werden,
-  oder ein Struct, welches sich wiederum zu einer Date Range auflösen lässt.
-
-  Die funktionen dieses Moduls nutzen den callback über `to_date_range/1`
+  Zurückgegeben wird ein nicht leeres `Date.Range` mit `step: 1` oder `-1`, ein
+  `Date` oder ein Struct, das sich wiederum in ein `Date.Range` umwandeln lässt.
+  Die Funktionen dieses Moduls rufen den Callback über `to_date_range/1` auf.
   """
   @callback to_date_range(struct()) :: t()
 
@@ -83,7 +80,9 @@ defmodule Shared.Datumsbereich do
   @doc """
   Implementiert `c:to_date_range/1` im aufrufenden Struct-Modul.
 
-  Die Keys werden zur Compile-Zeit gegen die Felder des Structs geprüft.
+  Die Keys werden zur Compile-Zeit gegen die Felder des Structs geprüft. Das
+  generierte `to_date_range/1` normalisiert nicht, dafür ist
+  `Shared.Datumsbereich.to_date_range/1` zuständig.
 
   ## Optionen
 
@@ -124,7 +123,11 @@ defmodule Shared.Datumsbereich do
       end
 
       urlaub = %Urlaub{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]}
+
       Abrechnung.to_date_range(%Abrechnung{urlaub: urlaub, betrag: 100})
+      #=> %Urlaub{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]}
+
+      Shared.Datumsbereich.to_date_range(%Abrechnung{urlaub: urlaub, betrag: 100})
       #=> Date.range(~D[2025-07-01], ~D[2025-07-14])
   """
   defmacro __using__(optionen) do
@@ -161,17 +164,18 @@ defmodule Shared.Datumsbereich do
               unquote(beginn_key) => %Date{} = beginn,
               unquote(ende_key) => %Date{} = ende
             }),
-            do: Date.range(beginn, ende)
+            do: Date.range(beginn, ende, 1)
       end
     end
   end
 
   @doc """
-  Konvertiert structs in eine `t:Date.Range.t()`.
+  Wandelt einen Datumsbereich `t:t/0` in ein nicht leeres, aufsteigendes
+  `t:Date.Range.t/0` mit `step: 1` um.
 
-  Kann auf structs aufgerufen werden, deren module `c:to_date_range/1` implementieren.
-
-  Unterstützt auch `t:Date.t/1` und absteigende date ranges.
+  Ein `Date` wird zu einem eintägigen Range, ein absteigendes Range mit
+  `step: -1` wird umgedreht. Bei Structs wird `c:to_date_range/1` ihres Moduls
+  aufgerufen und das Ergebnis erneut umgewandelt.
 
   ## Beispiele
 
@@ -224,7 +228,7 @@ defmodule Shared.Datumsbereich do
   # --- Boolesche Operationen ---
 
   @doc """
-  Prüft ob zwei datumsbereiche mindestens einen gemeinsamen Tag haben.
+  Prüft, ob `a` und `b` mindestens einen gemeinsamen Tag haben.
 
       iex> ueberschneidung?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-05])
       true
@@ -312,8 +316,8 @@ defmodule Shared.Datumsbereich do
   # --- Mengenoperationen ---
 
   @doc """
-  Liefert die Tage von `a`, die nicht in `b` liegen, als Liste von `Date.Range`s.
-  `a` und `b` können auch Listen von Datumsbereichen sein.
+  Liefert die Tage von `basis`, die nicht in `abzuziehen` liegen, als Liste von
+  `Date.Range`s. `basis` und `abzuziehen` können auch Listen von Datumsbereichen sein.
 
       iex> differenz(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-03])
       [Date.range(~D[2025-01-01], ~D[2025-01-02]), Date.range(~D[2025-01-04], ~D[2025-01-05])]
@@ -334,7 +338,7 @@ defmodule Shared.Datumsbereich do
       iex> differenz([], ~m[2025-01])
       []
 
-  Überschneidende Datumsbereiche in a werden dabei _nicht_ zusamengeführt.
+  Überschneidende Datumsbereiche in `basis` werden dabei _nicht_ zusammengeführt:
 
       iex> differenz(
       ...>   [~m[2026-01], ~v[2026-01]],
@@ -441,7 +445,7 @@ defmodule Shared.Datumsbereich do
     Enum.reverse(abschnitte)
   end
 
-  # --- Vergleichsoperationen ---
+  # --- Sortierung ---
 
   @doc """
   Sortiert Datumsbereiche nach Beginn und dann nach Ende.
