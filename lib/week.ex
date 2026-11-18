@@ -10,6 +10,8 @@ defmodule Shared.Week do
   if Code.ensure_loaded?(JSON.Encoder), do: @derive(JSON.Encoder)
   if Code.ensure_loaded?(Jason.Encoder), do: @derive(Jason.Encoder)
 
+  @behaviour Shared.Datumsbereich
+
   @enforce_keys [:year, :week]
   defstruct [:year, :week]
 
@@ -281,16 +283,20 @@ defmodule Shared.Week do
 
   ## Examples
 
-    iex> Shared.Week.to_range(@third_week_of_2018)
+    iex> Shared.Week.to_date_range(@third_week_of_2018)
     Date.range(~D[2018-01-15], ~D[2018-01-21])
 
   """
-  @spec to_range(Shared.Week.t()) :: DateRange.t()
-  def to_range(%__MODULE__{} = week) do
+  @impl Shared.Datumsbereich
+  @spec to_date_range(t()) :: Date.Range.t()
+  def to_date_range(%__MODULE__{} = week) do
     {first_day, last_day} = to_dates(week)
 
     Date.range(first_day, last_day)
   end
+
+  @deprecated "Use to_date_range/1 instead"
+  def to_range(week), do: to_date_range(week)
 
   @doc ~S"""
   Returns an end-exclusive Datetime Interval spanning the whole week.

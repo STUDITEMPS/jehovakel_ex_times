@@ -6,6 +6,8 @@ defmodule Shared.Month do
   if Code.ensure_loaded?(JSON.Encoder), do: @derive(JSON.Encoder)
   if Code.ensure_loaded?(Jason.Encoder), do: @derive(Jason.Encoder)
 
+  @behaviour Shared.Datumsbereich
+
   @enforce_keys [:year, :month]
   defstruct [:year, :month]
 
@@ -316,11 +318,16 @@ defmodule Shared.Month do
   @doc ~S"""
   ## Examples
 
-    iex> Month.to_range(@third_month_of_2018)
+    iex> Month.to_date_range(@third_month_of_2018)
     Date.range(~D[2018-03-01], ~D[2018-03-31])
 
   """
-  def to_range(%__MODULE__{} = month), do: Date.range(first_day(month), last_day(month))
+  @impl Shared.Datumsbereich
+  @spec to_date_range(t()) :: Date.Range.t()
+  def to_date_range(%__MODULE__{} = month), do: Date.range(first_day(month), last_day(month))
+
+  @deprecated "Use to_date_range/1 instead"
+  def to_range(month), do: to_date_range(month)
 
   @doc ~S"""
   Returns an end-exclusive Datetime Interval spanning the whole month.

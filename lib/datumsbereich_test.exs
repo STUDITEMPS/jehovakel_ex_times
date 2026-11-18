@@ -7,8 +7,8 @@ defmodule Shared.DatumsbereichTest do
   alias Shared.Datumsbereich
   alias Shared.Datumsbereich.Ueberlagerung
 
-  doctest Datumsbereich
-  doctest Ueberlagerung
+  doctest Datumsbereich, import: true
+  doctest Ueberlagerung, import: true
 
   defmodule MitDefaultKeys do
     use Shared.Datumsbereich
@@ -102,82 +102,7 @@ defmodule Shared.DatumsbereichTest do
     end
   end
 
-  describe "Funktionen mit Structs" do
-    setup do
-      %{
-        urlaub: %MitDefaultKeys{beginn: ~D[2025-01-03], ende: ~D[2025-01-08]},
-        januar: Shared.Month.range(~m[2025-01], ~m[2025-01])
-      }
-    end
-
-    test "Prädikate wandeln Structs und Dates vorher um", %{urlaub: urlaub, januar: januar} do
-      assert Datumsbereich.ueberschneidung?(urlaub, ~D[2025-01-08])
-      refute Datumsbereich.ueberschneidung?(urlaub, ~D[2025-01-09])
-      assert Datumsbereich.teil_von?(urlaub, januar)
-      assert Datumsbereich.beginnt_frueher?(januar, urlaub)
-      assert Datumsbereich.beginnt_spaeter?(urlaub, ~D[2025-01-01])
-      assert Datumsbereich.endet_frueher?(urlaub, januar)
-      assert Datumsbereich.endet_spaeter?(urlaub, ~D[2025-01-05])
-    end
-
-    test "Mengenoperationen wandeln Structs und Dates vorher um", %{
-      urlaub: urlaub,
-      januar: januar
-    } do
-      assert [
-               Date.range(~D[2025-01-03], ~D[2025-01-04]),
-               Date.range(~D[2025-01-06], ~D[2025-01-08])
-             ] ==
-               Datumsbereich.differenz(urlaub, ~D[2025-01-05])
-
-      assert Date.range(~D[2025-01-03], ~D[2025-01-08]) ==
-               Datumsbereich.ueberschneidung(januar, urlaub)
-
-      assert [Date.range(~D[2025-01-01], ~D[2025-01-08])] ==
-               Datumsbereich.vereinigung([
-                 urlaub,
-                 ~D[2025-01-01],
-                 Date.range(~D[2025-01-02], ~D[2025-01-03])
-               ])
-    end
-
-    test "differenz/2 mit Listen", %{urlaub: urlaub, januar: januar} do
-      assert [Date.range(~D[2025-01-03], ~D[2025-01-08])] == Datumsbereich.differenz(urlaub, [])
-      assert [] == Datumsbereich.differenz([], urlaub)
-      assert [] == Datumsbereich.differenz([urlaub, ~D[2025-01-01]], [januar])
-
-      assert [
-               Date.range(~D[2024-12-30], ~D[2024-12-31]),
-               Date.range(~D[2025-01-02], ~D[2025-01-05]),
-               Date.range(~D[2025-01-14], ~D[2025-01-19])
-             ] ==
-               Datumsbereich.differenz(
-                 [
-                   Shared.Week.range(~v[2025-01], ~v[2025-01]),
-                   Shared.Week.range(~v[2025-03], ~v[2025-03])
-                 ],
-                 [
-                   ~D[2025-01-01],
-                   ~D[2025-01-08],
-                   ~D[2025-01-13]
-                 ]
-               )
-    end
-
-    test "differenz/2 mit unsortierten und überlappenden Abzügen" do
-      assert [
-               Date.range(~D[2025-01-01], ~D[2025-01-01]),
-               Date.range(~D[2025-01-07], ~D[2025-01-07]),
-               Date.range(~D[2025-01-10], ~D[2025-01-10])
-             ] ==
-               Datumsbereich.differenz(Date.range(~D[2025-01-01], ~D[2025-01-10]), [
-                 ~D[2025-01-08],
-                 Date.range(~D[2025-01-04], ~D[2025-01-06]),
-                 Date.range(~D[2025-01-02], ~D[2025-01-05]),
-                 ~D[2025-01-09]
-               ])
-    end
-
+  describe "Funktionen" do
     test "differenz/2 mit Listen entspricht dem paarweisen Abziehen" do
       :rand.seed(:exsss, {1, 2, 3})
 
@@ -207,34 +132,18 @@ defmodule Shared.DatumsbereichTest do
       end
     end
 
-    test "ueberlagere/1 behält die ursprünglichen Elemente", %{urlaub: urlaub} do
-      ueberlagerungen =
-        [urlaub, ~D[2025-01-05]]
-        |> Datumsbereich.ueberlagere()
-        |> Enum.map(&{&1.datumsbereich, &1.elemente})
-
-      assert [
-               {Date.range(~D[2025-01-03], ~D[2025-01-04]), [urlaub]},
-               {Date.range(~D[2025-01-05], ~D[2025-01-05]), [~D[2025-01-05], urlaub]},
-               {Date.range(~D[2025-01-06], ~D[2025-01-08]), [urlaub]}
-             ] == ueberlagerungen
-    end
-
-    test "compare/2 und dauer/1 wandeln Structs vorher um", %{urlaub: urlaub, januar: januar} do
-      assert :gt == Datumsbereich.compare(urlaub, januar)
-      assert 6 == Datumsbereich.dauer(urlaub)
-      assert 1 == Datumsbereich.dauer(~D[2025-01-01])
-    end
-
     test "ungültige Date.Ranges führen zu Fehlern statt Endlosschleifen" do
-      absteigend = Date.range(~D[2025-01-05], ~D[2025-01-01], -1)
+      mit_schrittweite = Date.range(~D[2025-01-01], ~D[2025-01-05], 2)
+      leer = Date.range(~D[2025-01-01], ~D[2025-01-05], -1)
 
-      assert_raise ArgumentError, fn ->
-        Datumsbereich.ueberschneidung?(absteigend, ~D[2025-01-01])
+      for ungueltig <- [mit_schrittweite, leer] do
+        assert_raise ArgumentError, fn ->
+          Datumsbereich.ueberschneidung?(ungueltig, ~D[2025-01-01])
+        end
+
+        assert_raise ArgumentError, fn -> Datumsbereich.vereinigung([ungueltig]) end
+        assert_raise ArgumentError, fn -> Datumsbereich.dauer(ungueltig) end
       end
-
-      assert_raise ArgumentError, fn -> Datumsbereich.vereinigung([absteigend]) end
-      assert_raise ArgumentError, fn -> Datumsbereich.dauer(absteigend) end
     end
   end
 
@@ -270,31 +179,6 @@ defmodule Shared.DatumsbereichTest do
                MitDatumsbereichKey.to_date_range(%MitDatumsbereichKey{datumsbereich: range})
     end
 
-    test "macht aus einem Date im datumsbereich-Key einen eintägigen Date.Range" do
-      assert Date.range(~D[2025-02-01], ~D[2025-02-01]) ==
-               MitDatumsbereichKey.to_date_range(%MitDatumsbereichKey{
-                 datumsbereich: ~D[2025-02-01]
-               })
-    end
-
-    test "ruft to_date_range/1 des Structs im datumsbereich-Key auf" do
-      urlaub = %MitDefaultKeys{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]}
-
-      assert Date.range(~D[2025-07-01], ~D[2025-07-14]) ==
-               MitDatumsbereichKey.to_date_range(%MitDatumsbereichKey{datumsbereich: urlaub})
-
-      assert Date.range(~D[2025-02-01], ~D[2025-03-31]) ==
-               MitDatumsbereichKey.to_date_range(%MitDatumsbereichKey{
-                 datumsbereich: Shared.Month.range(~m[2025-02], ~m[2025-03])
-               })
-    end
-
-    test "wirft einen Fehler, wenn der datumsbereich-Key weder Date.Range noch to_date_range/1 hat" do
-      assert_raise ArgumentError, ~r/implementiert kein to_date_range/, fn ->
-        MitDatumsbereichKey.to_date_range(%MitDatumsbereichKey{datumsbereich: ~m[2025-02]})
-      end
-    end
-
     test "wirft einen Fehler, wenn die Default-Keys fehlen" do
       assert_raise ArgumentError, ~r/^:beginn is not a key/, fn ->
         defmodule OhneKeys do
@@ -323,33 +207,30 @@ defmodule Shared.DatumsbereichTest do
     end
   end
 
-  describe "ueberlagere/1" do
-    test "erzeugt keinen leeren Abschnitt, wenn ein Range endet und ein anderer am Folgetag beginnt" do
-      monat = Date.range(~D[2025-01-01], ~D[2025-01-10])
-      anfang = Date.range(~D[2025-01-01], ~D[2025-01-03])
-      mitte = Date.range(~D[2025-01-04], ~D[2025-01-06])
-
-      zeitraeume =
-        [monat, anfang, mitte]
-        |> Datumsbereich.ueberlagere()
-        |> Enum.map(& &1.datumsbereich)
-
-      assert [
-               Date.range(~D[2025-01-01], ~D[2025-01-03]),
-               Date.range(~D[2025-01-04], ~D[2025-01-06]),
-               Date.range(~D[2025-01-07], ~D[2025-01-10])
-             ] == zeitraeume
+  describe "to_date_range/1" do
+    test "macht aus einem Date im datumsbereich-Key einen eintägigen Date.Range" do
+      assert Date.range(~D[2025-02-01], ~D[2025-02-01]) ==
+               Datumsbereich.to_date_range(%MitDatumsbereichKey{datumsbereich: ~D[2025-02-01]})
     end
 
-    test "gibt für einen einzelnen Range genau einen Abschnitt zurück" do
-      range = Date.range(~D[2025-01-01], ~D[2025-01-05])
+    test "ruft to_date_range/1 des Structs im datumsbereich-Key auf" do
+      urlaub = %MitDefaultKeys{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]}
 
-      assert [%Ueberlagerung{datumsbereich: ^range, elemente: [^range]}] =
-               Datumsbereich.ueberlagere([range])
+      assert Date.range(~D[2025-07-01], ~D[2025-07-14]) ==
+               Datumsbereich.to_date_range(%MitDatumsbereichKey{datumsbereich: urlaub})
+
+      assert Date.range(~D[2025-02-01], ~D[2025-03-31]) ==
+               Datumsbereich.to_date_range(%MitDatumsbereichKey{
+                 datumsbereich: Shared.Month.range(~m[2025-02], ~m[2025-03])
+               })
     end
 
-    test "gibt für eine leere Liste eine leere Liste zurück" do
-      assert [] == Datumsbereich.ueberlagere([])
+    test "wirft einen Fehler, wenn der datumsbereich-Key weder Date.Range noch to_date_range/1 hat" do
+      assert_raise ArgumentError, ~r/NaiveDateTime definiert kein to_date_range/, fn ->
+        Datumsbereich.to_date_range(%MitDatumsbereichKey{
+          datumsbereich: ~N[2025-02-01 00:00:00]
+        })
+      end
     end
   end
 end

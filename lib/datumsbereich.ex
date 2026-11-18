@@ -2,24 +2,25 @@ defmodule Shared.Datumsbereich do
   @moduledoc """
   Funktionen für ganztägige Zeiträume auf Basis von `t:Date.Range.t/0`.
 
-  Gerechnet wird direkt auf den ISO-Tagen der Ranges. Unterstützt werden nur
-  aufsteigende Ranges mit `step: 1`, siehe `is_valid/1`.
+  Gerechnet wird direkt auf den ISO-Tagen der Ranges. Unterstützt werden
+  aufsteigende Ranges mit `step: 1`, siehe `is_valid/1`. Absteigende Ranges mit
+  `step: -1` werden von `to_date_range/1` umgedreht.
 
   ## Beispiele
 
-      iex> Shared.Datumsbereich.ueberschneidung?(
+      iex> ueberschneidung?(
       ...>   Date.range(~D[2025-01-01], ~D[2025-01-05]),
       ...>   Date.range(~D[2025-01-05], ~D[2025-01-10])
       ...> )
       true
 
-      iex> Shared.Datumsbereich.differenz(
+      iex> differenz(
       ...>   Date.range(~D[2025-01-01], ~D[2025-01-10]),
       ...>   Date.range(~D[2025-01-04], ~D[2025-01-06])
       ...> )
       [Date.range(~D[2025-01-01], ~D[2025-01-03]), Date.range(~D[2025-01-07], ~D[2025-01-10])]
 
-      iex> Shared.Datumsbereich.vereinigung([
+      iex> vereinigung([
       ...>   Date.range(~D[2025-01-06], ~D[2025-01-10]),
       ...>   Date.range(~D[2025-01-01], ~D[2025-01-05])
       ...> ])
@@ -31,7 +32,7 @@ defmodule Shared.Datumsbereich do
   `to_date_range/1`, siehe `__using__/1`. `to_date_range/1` wandelt solche
   Structs in ein `Date.Range` um:
 
-      iex> Shared.Datumsbereich.to_date_range(Shared.Month.range(~m[2025-01], ~m[2025-02]))
+      iex> to_date_range(Shared.Month.range(~m[2025-01], ~m[2025-02]))
       Date.range(~D[2025-01-01], ~D[2025-02-28])
   """
 
@@ -49,36 +50,32 @@ defmodule Shared.Datumsbereich do
             first_in_iso_days: integer,
             last: Date.t(),
             last_in_iso_days: integer,
-            step: 1
+            step: 1 | -1
           }
           | Date.t()
           | struct()
 
+  @doc """
+  Gibt einen Datumsbereich `t:t/0` für ein struct zurück.
+
+  Diesen Callback sollen die module von structs implementieren, die eine Art
+  Datumsbereich beschreiben. Das kann beispielsweise eine Woche (`Shared.Week`)
+  sein, oder auch ein Struct das Schulferien beschreibt.
+
+  Es muss eine non-empty Date Range mit step size 1 oder -1 zurück gegeben werden,
+  oder ein Struct, welches sich wiederum zu einer Date Range auflösen lässt.
+
+  Die funktionen dieses Moduls nutzen den callback über `to_date_range/1`
+  """
   @callback to_date_range(struct()) :: t()
 
   defmacrop beginn(range), do: quote(do: unquote(range).first_in_iso_days)
   defmacrop ende(range), do: quote(do: unquote(range).last_in_iso_days)
 
-  @doc """
-  Prüft, ob `range` ein aufsteigendes `Date.Range` mit `step: 1` ist.
+  defguardp is_valid(range)
+            when is_struct(range, Date.Range) and range.step == 1 and beginn(range) <= ende(range)
 
-      iex> require Shared.Datumsbereich
-      iex> Shared.Datumsbereich.is_valid(Date.range(~D[2025-01-01], ~D[2025-01-05]))
-      true
-      iex> Shared.Datumsbereich.is_valid(Date.range(~D[2025-01-05], ~D[2025-01-01], -1))
-      false
-  """
-  defguard is_valid(range)
-           when is_struct(range, Date.Range) and range.step == 1 and beginn(range) <= ende(range)
-
-  @doc """
-  Prüft, ob `a` und `b` gültige Datumsbereiche im Sinne von `is_valid/1` sind.
-
-      iex> require Shared.Datumsbereich
-      iex> Shared.Datumsbereich.are_valid(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-01])
-      false
-  """
-  defguard are_valid(a, b) when is_valid(a) and is_valid(b)
+  defguardp are_valid(a, b) when is_valid(a) and is_valid(b)
 
   # Nur private, da a & b sortiert sein müssen.
   defguardp luecke_besteht(a, b) when ende(a) + 1 < beginn(b)
@@ -170,33 +167,48 @@ defmodule Shared.Datumsbereich do
   end
 
   @doc """
-  Liefert ein `Date.Range` unverändert zurück und macht aus einem `Date` ein
-  `Date.Range` über diesen einen Tag. Bei einem Struct, dessen Modul
-  `to_date_range/1` implementiert, wird diese Funktion aufgerufen.
+  Konvertiert structs in eine `t:Date.Range.t()`.
+
+  Kann auf structs aufgerufen werden, deren module `c:to_date_range/1` implementieren.
+
+  Unterstützt auch `t:Date.t/1` und absteigende date ranges.
 
   ## Beispiele
 
-      iex> Shared.Datumsbereich.to_date_range(Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      iex> to_date_range(Date.range(~D[2025-01-01], ~D[2025-01-05]))
       Date.range(~D[2025-01-01], ~D[2025-01-05])
 
-      iex> Shared.Datumsbereich.to_date_range(Shared.Week.range(~v[2025-01], ~v[2025-02]))
+      iex> to_date_range(Shared.Week.range(~v[2025-01], ~v[2025-02]))
       Date.range(~D[2024-12-30], ~D[2025-01-12])
 
-      iex> Shared.Datumsbereich.to_date_range(~D[2025-01-01])
+      iex> to_date_range(~D[2025-01-01])
       Date.range(~D[2025-01-01], ~D[2025-01-01])
 
-      iex> Shared.Datumsbereich.to_date_range(~N[2025-01-01 12:00:00])
-      ** (ArgumentError) ~N[2025-01-01 12:00:00] ist kein Date.Range und implementiert kein to_date_range/1
+      iex> to_date_range(~N[2025-01-01 12:00:00])
+      ** (ArgumentError) NaiveDateTime definiert kein to_date_range/1
 
-      iex> Shared.Datumsbereich.to_date_range(Date.range(~D[2025-01-05], ~D[2025-01-01], -1))
-      ** (ArgumentError) Date.range(~D[2025-01-05], ~D[2025-01-01], -1) wird nicht unterstützt, nur aufsteigende Date.Ranges mit step 1
+      iex> to_date_range(Date.range(~D[2025-01-05], ~D[2025-01-01], -1))
+      Date.range(~D[2025-01-01], ~D[2025-01-05])
+
+      iex> to_date_range(Date.range(~D[2025-01-01], ~D[2025-01-05], 2))
+      ** (ArgumentError) Date.range(~D[2025-01-01], ~D[2025-01-05], 2) wird nicht unterstützt, nur nicht leere Date.Ranges mit step 1 oder -1
   """
   @spec to_date_range(t()) :: Date.Range.t()
   def to_date_range(range) when is_valid(range), do: range
 
+  def to_date_range(%Date.Range{step: -1} = range) when beginn(range) >= ende(range) do
+    %Date.Range{
+      step: 1,
+      first: range.last,
+      first_in_iso_days: ende(range),
+      last: range.first,
+      last_in_iso_days: beginn(range)
+    }
+  end
+
   def to_date_range(%Date.Range{} = range) do
     raise ArgumentError,
-          "#{inspect(range)} wird nicht unterstützt, nur aufsteigende Date.Ranges mit step 1"
+          "#{inspect(range)} wird nicht unterstützt, nur nicht leere Date.Ranges mit step 1 oder -1"
   end
 
   def to_date_range(%Date{} = datum), do: Date.range(datum, datum)
@@ -205,26 +217,21 @@ defmodule Shared.Datumsbereich do
     if Code.ensure_loaded?(modul) and function_exported?(modul, :to_date_range, 1) do
       to_date_range(modul.to_date_range(wert))
     else
-      raise ArgumentError, "#{inspect(modul)} implementiert kein to_date_range/1"
-    end
-  end
-
-  defp validiere_key!(key, struct_keys, module) do
-    if key not in struct_keys do
-      raise ArgumentError,
-            "#{inspect(key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
+      raise ArgumentError, "#{inspect(modul)} definiert kein to_date_range/1"
     end
   end
 
   # --- Boolesche Operationen ---
 
   @doc """
-  Prüft, ob `a` und `b` mindestens einen gemeinsamen Tag haben.
+  Prüft ob zwei datumsbereiche mindestens einen gemeinsamen Tag haben.
 
-      iex> Shared.Datumsbereich.ueberschneidung?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-05])
+      iex> ueberschneidung?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-05])
       true
-      iex> Shared.Datumsbereich.ueberschneidung?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-06])
+      iex> ueberschneidung?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-06])
       false
+      iex> ueberschneidung?(~v[2025-01], ~m[2024-12])
+      true
   """
   @spec ueberschneidung?(t(), t()) :: boolean()
   def ueberschneidung?(a, b) when are_valid(a, b),
@@ -236,10 +243,12 @@ defmodule Shared.Datumsbereich do
   @doc """
   Prüft, ob `a` vollständig in `b` enthalten ist.
 
-      iex> Shared.Datumsbereich.teil_von?(~D[2025-01-03], Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      iex> teil_von?(~D[2025-01-03], Date.range(~D[2025-01-01], ~D[2025-01-05]))
       true
-      iex> Shared.Datumsbereich.teil_von?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-03])
+      iex> teil_von?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-03])
       false
+      iex> teil_von?(~v[2025-02], ~m[2025-01])
+      true
   """
   @spec teil_von?(t(), t()) :: boolean()
   def teil_von?(a, b) when are_valid(a, b) do
@@ -251,7 +260,9 @@ defmodule Shared.Datumsbereich do
   @doc """
   Prüft, ob `a` vor `b` beginnt.
 
-      iex> Shared.Datumsbereich.beginnt_frueher?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-02])
+      iex> beginnt_frueher?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-02])
+      true
+      iex> beginnt_frueher?(~v[2025-01], ~m[2025-01])
       true
   """
   @spec beginnt_frueher?(t(), t()) :: boolean()
@@ -264,7 +275,7 @@ defmodule Shared.Datumsbereich do
   @doc """
   Prüft, ob `a` nach `b` beginnt.
 
-      iex> Shared.Datumsbereich.beginnt_spaeter?(~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      iex> beginnt_spaeter?(~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-05]))
       true
   """
   @spec beginnt_spaeter?(t(), t()) :: boolean()
@@ -277,7 +288,7 @@ defmodule Shared.Datumsbereich do
   @doc """
   Prüft, ob `a` vor `b` endet.
 
-      iex> Shared.Datumsbereich.endet_frueher?(~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      iex> endet_frueher?(~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-05]))
       true
   """
   @spec endet_frueher?(t(), t()) :: boolean()
@@ -289,7 +300,7 @@ defmodule Shared.Datumsbereich do
   @doc """
   Prüft, ob `a` nach `b` endet.
 
-      iex> Shared.Datumsbereich.endet_spaeter?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-02])
+      iex> endet_spaeter?(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-02])
       true
   """
   @spec endet_spaeter?(t(), t()) :: boolean()
@@ -304,23 +315,173 @@ defmodule Shared.Datumsbereich do
   Liefert die Tage von `a`, die nicht in `b` liegen, als Liste von `Date.Range`s.
   `a` und `b` können auch Listen von Datumsbereichen sein.
 
-      iex> Shared.Datumsbereich.differenz(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-03])
+      iex> differenz(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-03])
       [Date.range(~D[2025-01-01], ~D[2025-01-02]), Date.range(~D[2025-01-04], ~D[2025-01-05])]
 
-      iex> Shared.Datumsbereich.differenz(
+      iex> differenz(
       ...>   [Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-10]],
-      ...>   [~D[2025-01-02], ~D[2025-01-04], ~D[2025-01-10]]
+      ...>   [~D[2025-01-04], ~D[2025-01-02], ~D[2025-01-10]]
       ...> )
       [
         Date.range(~D[2025-01-01], ~D[2025-01-01]),
         Date.range(~D[2025-01-03], ~D[2025-01-03]),
         Date.range(~D[2025-01-05], ~D[2025-01-05])
       ]
+
+      iex> differenz(~D[2025-01-01], [])
+      [Date.range(~D[2025-01-01], ~D[2025-01-01])]
+
+      iex> differenz([], ~m[2025-01])
+      []
+
+  Überschneidende Datumsbereiche in a werden dabei _nicht_ zusamengeführt.
+
+      iex> differenz(
+      ...>   [~m[2026-01], ~v[2026-01]],
+      ...>   Date.range(~D[2026-01-02], ~D[2026-02-01])
+      ...> )
+      [
+        Date.range(~D[2026-01-01], ~D[2026-01-01]),
+        Date.range(~D[2025-12-29], ~D[2026-01-01])
+      ]
   """
   @spec differenz(t() | [t()], t() | [t()]) :: [Date.Range.t()]
   def differenz(basis, abzuziehen) do
     abzuziehen = List.to_tuple(vereinigung(List.wrap(abzuziehen)))
     Enum.flat_map(List.wrap(basis), &diff(to_date_range(&1), abzuziehen))
+  end
+
+  @doc """
+  Liefert die gemeinsamen Tage von `a` und `b` oder `nil`, wenn es keine gibt.
+
+      iex> ueberschneidung(~m[2025-01], ~v[2025-01])
+      Date.range(~D[2025-01-01], ~D[2025-01-05])
+      iex> ueberschneidung(~D[2025-01-01], ~D[2025-01-02])
+      nil
+  """
+  @spec ueberschneidung(t(), t()) :: Date.Range.t() | nil
+  def ueberschneidung(a, b) when are_valid(a, b) do
+    if ueberschneidung?(a, b) do
+      erster_tag = if beginnt_spaeter?(a, b), do: a.first, else: b.first
+      letzter_tag = if endet_frueher?(a, b), do: a.last, else: b.last
+      kalender = a.first.calendar
+      Date.range(Date.convert!(erster_tag, kalender), Date.convert!(letzter_tag, kalender))
+    end
+  end
+
+  def ueberschneidung(%_{} = a, %_{} = b), do: ueberschneidung(to_date_range(a), to_date_range(b))
+
+  @doc """
+  Fasst überlappende und direkt aneinandergrenzende Datumsbereiche zusammen.
+  Das Ergebnis ist aufsteigend sortiert.
+
+      iex> vereinigung([~D[2025-01-04], Date.range(~D[2025-01-01], ~D[2025-01-03]), ~D[2025-01-10]])
+      [Date.range(~D[2025-01-01], ~D[2025-01-04]), Date.range(~D[2025-01-10], ~D[2025-01-10])]
+
+      iex> vereinigung([~v[2025-02], ~m[2025-01]])
+      [Date.range(~D[2025-01-01], ~D[2025-01-31])]
+  """
+  @spec vereinigung([t()]) :: [Date.Range.t()]
+  def vereinigung(datumsbereiche) do
+    datumsbereiche
+    |> Enum.map(&mit_beginn/1)
+    |> List.keysort(0)
+    |> Enum.reduce([], &vereinige/2)
+    |> Enum.reverse()
+  end
+
+  # --- Ueberlagere (Sweep-Line auf Dates) ---
+
+  @doc """
+  Zerlegt die Datumsbereiche in überschneidungsfreie Abschnitte. Jeder Abschnitt
+  enthält die ursprünglichen Elemente, die ihn überdecken, siehe `Shared.Datumsbereich.Ueberlagerung`.
+
+      iex> ueberlagere([~v[2025-01], ~D[2025-01-01]])
+      [
+        %Ueberlagerung{
+          datumsbereich: Date.range(~D[2024-12-30], ~D[2024-12-31]),
+          elemente: [~v[2025-01]]
+        },
+        %Ueberlagerung{
+          datumsbereich: Date.range(~D[2025-01-01], ~D[2025-01-01]),
+          elemente: [~D[2025-01-01], ~v[2025-01]]
+        },
+        %Ueberlagerung{
+          datumsbereich: Date.range(~D[2025-01-02], ~D[2025-01-05]),
+          elemente: [~v[2025-01]]
+        }
+      ]
+
+  Ein Bereich, der am Folgetag eines anderen beginnt, schließt ohne leeren Abschnitt an:
+
+      iex> [
+      ...>   Date.range(~D[2025-01-01], ~D[2025-01-10]),
+      ...>   Date.range(~D[2025-01-01], ~D[2025-01-03]),
+      ...>   Date.range(~D[2025-01-04], ~D[2025-01-06])
+      ...> ]
+      ...> |> ueberlagere()
+      ...> |> Enum.map(& &1.datumsbereich)
+      [
+        Date.range(~D[2025-01-01], ~D[2025-01-03]),
+        Date.range(~D[2025-01-04], ~D[2025-01-06]),
+        Date.range(~D[2025-01-07], ~D[2025-01-10])
+      ]
+
+      iex> ueberlagere([])
+      []
+  """
+  @spec ueberlagere([t()]) :: [Ueberlagerung.t()]
+  def ueberlagere(datumsbereiche) do
+    {abschnitte, [], _} =
+      datumsbereiche
+      |> Enum.flat_map(&grenzen/1)
+      |> Enum.sort()
+      |> Enum.reduce({[], [], nil}, &verarbeite_grenze/2)
+
+    Enum.reverse(abschnitte)
+  end
+
+  # --- Vergleichsoperationen ---
+
+  @doc """
+  Sortiert Datumsbereiche nach Beginn und dann nach Ende.
+
+      iex> sort([~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-03])])
+      [Date.range(~D[2025-01-01], ~D[2025-01-03]), ~D[2025-01-02]]
+  """
+  @spec sort(Enumerable.t(t())) :: list(t())
+  def sort(bereiche), do: Enum.sort_by(bereiche, &to_iso_day_tuple/1)
+
+  # --- Dauer ---
+
+  @doc """
+  Liefert die Anzahl der Tage eines Datumsbereichs, inklusive erstem und letztem Tag.
+
+  ## Beispiele
+
+      iex> dauer(Date.range(~D[2025-01-01], ~D[2025-01-07]))
+      7
+
+      iex> dauer(~D[2025-01-01])
+      1
+
+      iex> dauer(~m[2025-02])
+      28
+
+      iex> dauer(Date.range(~D[2025-01-05], ~D[2025-01-01], -1))
+      5
+  """
+  @spec dauer(t()) :: pos_integer()
+  def dauer(range) when is_valid(range), do: ende(range) - beginn(range) + 1
+  def dauer(%_{} = datumsbereich), do: dauer(to_date_range(datumsbereich))
+
+  # --- Private Funktionen ---
+
+  defp validiere_key!(key, struct_keys, module) do
+    if key not in struct_keys do
+      raise ArgumentError,
+            "#{inspect(key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
+    end
   end
 
   # abzuziehen ist ein Tupel sortierter, disjunkter Date.Ranges, damit der erste
@@ -348,40 +509,6 @@ defmodule Shared.Datumsbereich do
   defp bis_vor(range, abzug), do: bis_iso_tag(range, beginn(abzug) - 1)
   defp beginnend_nach(range, abzug), do: ab_iso_tag(range, ende(abzug) + 1)
 
-  @doc """
-  Liefert die gemeinsamen Tage von `a` und `b` oder `nil`, wenn es keine gibt.
-
-      iex> Shared.Datumsbereich.ueberschneidung(~D[2025-01-01], ~D[2025-01-02])
-      nil
-  """
-  @spec ueberschneidung(t(), t()) :: Date.Range.t() | nil
-  def ueberschneidung(a, b) when are_valid(a, b) do
-    if ueberschneidung?(a, b) do
-      erster_tag = if beginnt_spaeter?(a, b), do: a.first, else: b.first
-      letzter_tag = if endet_frueher?(a, b), do: a.last, else: b.last
-      kalender = a.first.calendar
-      Date.range(Date.convert!(erster_tag, kalender), Date.convert!(letzter_tag, kalender))
-    end
-  end
-
-  def ueberschneidung(%_{} = a, %_{} = b), do: ueberschneidung(to_date_range(a), to_date_range(b))
-
-  @doc """
-  Fasst überlappende und direkt aneinandergrenzende Datumsbereiche zusammen.
-  Das Ergebnis ist aufsteigend sortiert.
-
-      iex> Shared.Datumsbereich.vereinigung([~D[2025-01-04], Date.range(~D[2025-01-01], ~D[2025-01-03]), ~D[2025-01-10]])
-      [Date.range(~D[2025-01-01], ~D[2025-01-04]), Date.range(~D[2025-01-10], ~D[2025-01-10])]
-  """
-  @spec vereinigung([t()]) :: [Date.Range.t()]
-  def vereinigung(datumsbereiche) do
-    datumsbereiche
-    |> Enum.map(&mit_beginn/1)
-    |> List.keysort(0)
-    |> Enum.reduce([], &vereinige/2)
-    |> Enum.reverse()
-  end
-
   defp vereinige({_, b}, [a | rest]) when not luecke_besteht(a, b), do: [verlaengere(a, b) | rest]
   defp vereinige({_, b}, acc), do: [b | acc]
 
@@ -394,35 +521,6 @@ defmodule Shared.Datumsbereich do
     do: %{a | last: Date.convert!(b.last, a.first.calendar), last_in_iso_days: ende(b)}
 
   defp verlaengere(a, _b), do: a
-
-  # --- Ueberlagere (Sweep-Line auf Dates) ---
-
-  @doc """
-  Zerlegt die Datumsbereiche in überschneidungsfreie Abschnitte. Jeder Abschnitt
-  enthält die ursprünglichen Elemente, die ihn überdecken, siehe `Shared.Datumsbereich.Ueberlagerung`.
-
-      iex> Shared.Datumsbereich.ueberlagere([Date.range(~D[2025-01-01], ~D[2025-01-03]), ~D[2025-01-03]])
-      [
-        %Shared.Datumsbereich.Ueberlagerung{
-          datumsbereich: Date.range(~D[2025-01-01], ~D[2025-01-02]),
-          elemente: [Date.range(~D[2025-01-01], ~D[2025-01-03])]
-        },
-        %Shared.Datumsbereich.Ueberlagerung{
-          datumsbereich: Date.range(~D[2025-01-03], ~D[2025-01-03]),
-          elemente: [~D[2025-01-03], Date.range(~D[2025-01-01], ~D[2025-01-03])]
-        }
-      ]
-  """
-  @spec ueberlagere([t()]) :: [Ueberlagerung.t()]
-  def ueberlagere(datumsbereiche) do
-    {abschnitte, [], _} =
-      datumsbereiche
-      |> Enum.flat_map(&grenzen/1)
-      |> Enum.sort()
-      |> Enum.reduce({[], [], nil}, &verarbeite_grenze/2)
-
-    Enum.reverse(abschnitte)
-  end
 
   # Das Ende liegt rechts-offen auf dem Folgetag, damit ein Range, der an diesem Tag
   # beginnt, nahtlos anschließt. Da :ende < :start sortiert, wird das Ende zuerst verarbeitet.
@@ -464,55 +562,8 @@ defmodule Shared.Datumsbereich do
     }
   end
 
-  # --- Vergleichsoperationen ---
-
-  @doc """
-  Sortiert Datumsbereiche nach Beginn und dann nach Ende, siehe `compare/2`.
-
-      iex> Shared.Datumsbereich.sort([~D[2025-01-02], Date.range(~D[2025-01-01], ~D[2025-01-03])])
-      [Date.range(~D[2025-01-01], ~D[2025-01-03]), ~D[2025-01-02]]
-  """
-  @spec sort(Enumerable.t(t())) :: list(t())
-  def sort(bereiche), do: Enum.sort_by(bereiche, &to_date_range/1, __MODULE__)
-
-  @doc """
-  Vergleicht zuerst den Beginn und dann das Ende. Kann mit `Enum.sort/2` verwendet werden.
-
-      iex> Shared.Datumsbereich.compare(Date.range(~D[2025-01-01], ~D[2025-01-05]), ~D[2025-01-01])
-      :gt
-      iex> Enum.sort([~D[2025-01-02], ~D[2025-01-01]], Shared.Datumsbereich)
-      [~D[2025-01-01], ~D[2025-01-02]]
-  """
-  @spec compare(t(), t()) :: :lt | :eq | :gt
-  def compare(a, b) when are_valid(a, b) do
-    a_tage = {beginn(a), ende(a)}
-    b_tage = {beginn(b), ende(b)}
-
-    cond do
-      a_tage < b_tage -> :lt
-      a_tage > b_tage -> :gt
-      true -> :eq
-    end
-  end
-
-  def compare(%_{} = a, %_{} = b), do: compare(to_date_range(a), to_date_range(b))
-
-  # --- Dauer ---
-
-  @doc """
-  Liefert die Anzahl der Tage eines Datumsbereichs, inklusive erstem und letztem Tag.
-
-  ## Beispiele
-
-      iex> Shared.Datumsbereich.dauer(Date.range(~D[2025-01-01], ~D[2025-01-07]))
-      7
-
-      iex> Shared.Datumsbereich.dauer(~D[2025-01-01])
-      1
-  """
-  @spec dauer(t()) :: pos_integer()
-  def dauer(range) when is_valid(range), do: ende(range) - beginn(range) + 1
-  def dauer(%_{} = datumsbereich), do: dauer(to_date_range(datumsbereich))
+  defp to_iso_day_tuple(range) when is_valid(range), do: {beginn(range), ende(range)}
+  defp to_iso_day_tuple(bereich), do: to_iso_day_tuple(to_date_range(bereich))
 
   defp index_nicht_vor(ranges, %{} = range) when is_tuple(ranges),
     do: index_nicht_vor(ranges, beginn(range), 0, tuple_size(ranges))

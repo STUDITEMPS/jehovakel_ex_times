@@ -9,6 +9,8 @@ defmodule Shared.Month.Range do
           direction: direction()
         }
 
+  @behaviour Shared.Datumsbereich
+
   defstruct [:start, :size, :direction]
 
   @doc """
@@ -140,6 +142,7 @@ defmodule Shared.Month.Range do
       iex> Shared.Month.Range.backward(~m[2024-01], ~m[2024-03]) |> Shared.Month.Range.to_date_range()
       Date.range(~D[2024-01-01], ~D[2023-12-31], 1)
   """
+  @impl Shared.Datumsbereich
   @spec to_date_range(t()) :: Date.Range.t()
   def to_date_range(%__MODULE__{size: 0, start: start}),
     do: Date.range(Month.first_day(start), Date.add(Month.first_day(start), -1), 1)

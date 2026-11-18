@@ -10,7 +10,7 @@ defmodule Shared.Datumsbereich.Ueberlagerung do
       ...>     Date.range(~D[2025-01-01], ~D[2025-01-05]),
       ...>     Date.range(~D[2025-01-03], ~D[2025-01-08])
       ...>   ])
-      iex> Shared.Datumsbereich.Ueberlagerung.to_date_range(ueberlagerung)
+      iex> to_date_range(ueberlagerung)
       Date.range(~D[2025-01-01], ~D[2025-01-02])
   """
 
