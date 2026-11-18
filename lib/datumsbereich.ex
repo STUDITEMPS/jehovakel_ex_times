@@ -372,25 +372,24 @@ defmodule Shared.Datumsbereich do
   @spec vereinigung([t()]) :: [Date.Range.t()]
   def vereinigung(datumsbereiche) do
     datumsbereiche
-    |> Enum.map(&to_date_range/1)
-    |> Enum.sort_by(&beginn/1)
-    |> vereinige([])
+    |> Enum.map(&mit_beginn/1)
+    |> List.keysort(0)
+    |> Enum.reduce([], &vereinige/2)
     |> Enum.reverse()
   end
 
-  defp vereinige([], acc), do: acc
-  defp vereinige([a | rest], acc), do: vereinige(a, a, rest, acc)
+  defp vereinige({_, b}, [a | rest]) when not luecke_besteht(a, b), do: [verlaengere(a, b) | rest]
+  defp vereinige({_, b}, acc), do: [b | acc]
 
-  # beginn ist der erste Bereich des aktuellen Abschnitts, a der Bereich mit dem
-  # bisher spätesten Ende.
-  defp vereinige(beginn, a, [b | rest], acc) when not luecke_besteht(a, b),
-    do: vereinige(beginn, if(ende(b) > ende(a), do: b, else: a), rest, acc)
+  defp mit_beginn(datumsbereich) do
+    range = to_date_range(datumsbereich)
+    {beginn(range), range}
+  end
 
-  defp vereinige(beginn, a, rest, acc),
-    do: vereinige(rest, [verlaengere_bis_ende(beginn, a) | acc])
-
-  defp verlaengere_bis_ende(a, b),
+  defp verlaengere(a, b) when ende(b) > ende(a),
     do: %{a | last: Date.convert!(b.last, a.first.calendar), last_in_iso_days: ende(b)}
+
+  defp verlaengere(a, _b), do: a
 
   # --- Ueberlagere (Sweep-Line auf Dates) ---
 
