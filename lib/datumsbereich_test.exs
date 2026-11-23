@@ -35,8 +35,8 @@ defmodule Shared.DatumsbereichTest do
     use Shared.Datumsbereich
 
     embedded_schema do
-      field(:beginn, :date)
-      field(:ende, :date, virtual: true)
+      field :beginn, :date
+      field :ende, :date, virtual: true
     end
   end
 
@@ -222,8 +222,8 @@ defmodule Shared.DatumsbereichTest do
                        use Shared.Datumsbereich
 
                        embedded_schema do
-                         field(:beginn, :date)
-                         field(:ende, :naive_datetime)
+                         field :beginn, :date
+                         field :ende, :naive_datetime
                        end
                      end
                    end
@@ -235,8 +235,8 @@ defmodule Shared.DatumsbereichTest do
         use Shared.Datumsbereich, ecto_validierung: false
 
         embedded_schema do
-          field(:beginn, :date)
-          field(:ende, :naive_datetime)
+          field :beginn, :date
+          field :ende, :naive_datetime
         end
       end
 

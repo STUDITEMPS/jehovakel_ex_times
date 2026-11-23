@@ -123,7 +123,9 @@ defmodule Shared.Datumsbereich do
   @doc """
   Implementiert `c:to_date_range/1` im aufrufenden Struct-Modul.
 
-  Die Keys werden zur Compile-Zeit gegen die Felder des Structs geprüft. Das
+  Die Keys werden zur Compile-Zeit gegen die Felder des Structs geprüft. Mit
+  `:beginn` und `:ende` merkt sich das Modul die Felder zusätzlich für
+  `Shared.Datumsbereich.Query.ueberschneidet_sich_mit/3`. Das
   generierte `to_date_range/1` normalisiert nicht, dafür ist
   `Shared.Datumsbereich.to_date_range/1` zuständig.
 
@@ -211,6 +213,9 @@ defmodule Shared.Datumsbereich do
       end
 
       quote do
+        @doc false
+        def __datumsbereich_felder__, do: {unquote(beginn_key), unquote(ende_key)}
+
         @impl Shared.Datumsbereich
         def to_date_range(%__MODULE__{
               unquote(beginn_key) => %Date{} = beginn,

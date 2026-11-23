@@ -36,7 +36,7 @@ defmodule JehovakelExTimes.MixProject do
       {:tix, "~> 0.4", only: :test, runtime: false},
       # Property based Testing for Elixir (based upon PropEr)
       {:propcheck, "~> 1.5", only: [:test]},
-      {:ecto, "~> 3.12", only: :test},
+      {:ecto, "~> 3.12", optional: true},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
