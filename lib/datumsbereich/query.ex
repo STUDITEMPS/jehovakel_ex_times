@@ -2,8 +2,8 @@ if Code.ensure_loaded?(Ecto.Query) do
   defmodule Shared.Datumsbereich.Query do
     @moduledoc """
     Ecto-Queries für Entities mit einem Datumsbereich aus Beginn- und Ende-Feld:
-    `ueberschneidet_sich_mit/3`, `beginnt_in/3`, `endet_in/3`, `enthaelt/3` und
-    `ist_enthalten_in/3`.
+    `ueberschneidet_sich_mit/3`, `beginnt_in/3`, `endet_in/3`, `enthaelt/3`,
+    `ist_enthalten_in/3` und `entspricht/3`.
 
     Zu jeder Funktion gibt es eine Negation, z. B. `ueberschneidet_sich_nicht_mit/3`.
     Sie liefert genau die Entities, die die ursprüngliche Funktion nicht liefert,
@@ -350,6 +350,60 @@ if Code.ensure_loaded?(Ecto.Query) do
       where(query, ^bedingung)
     end
 
+    @doc """
+    Schränkt `query` auf Entities ein, die genau an den Tagen von `datumsbereich`
+    beginnen und enden. Entities ohne Ende entsprechen ihm nie.
+
+    Optionen siehe `t:opts/0`.
+
+    ## Beispiele
+
+        iex> entspricht(Vertrag, ~m[2025-01])
+        #Ecto.Query<from v0 in Vertrag, where: v0.gueltig_ab == ^~D[2025-01-01] and v0.gueltig_bis == ^~D[2025-01-31]>
+    """
+    @spec entspricht(Ecto.Queryable.t(), Datumsbereich.t(), opts()) :: Ecto.Query.t()
+    def entspricht(query, datumsbereich, opts \\ []) do
+      {query, opts, {beginn_feld, ende_feld}, {erster_tag, letzter_tag}} =
+        vorbereiten!(query, datumsbereich, opts)
+
+      binding = opts[:binding]
+
+      bedingung =
+        dynamic(
+          ^gleich(binding, beginn_feld, erster_tag) and ^gleich(binding, ende_feld, letzter_tag)
+        )
+
+      where(query, ^bedingung)
+    end
+
+    @doc """
+    Negation von `entspricht/3`: Schränkt `query` auf Entities ein, die an einem
+    anderen Tag als `datumsbereich` beginnen oder enden. Entities ohne Ende sind
+    immer enthalten.
+
+    Optionen siehe `t:opts/0`.
+
+    ## Beispiele
+
+        iex> entspricht_nicht(Vertrag, ~m[2025-01])
+        #Ecto.Query<from v0 in Vertrag, where: v0.gueltig_ab != ^~D[2025-01-01] or is_nil(v0.gueltig_bis) or v0.gueltig_bis != ^~D[2025-01-31]>
+    """
+    @spec entspricht_nicht(Ecto.Queryable.t(), Datumsbereich.t(), opts()) :: Ecto.Query.t()
+    def entspricht_nicht(query, datumsbereich, opts \\ []) do
+      {query, opts, {beginn_feld, ende_feld}, {erster_tag, letzter_tag}} =
+        vorbereiten!(query, datumsbereich, opts)
+
+      binding = opts[:binding]
+
+      bedingung =
+        dynamic(
+          ^ungleich(binding, beginn_feld, erster_tag) or ^ohne_wert(binding, ende_feld) or
+            ^ungleich(binding, ende_feld, letzter_tag)
+        )
+
+      where(query, ^bedingung)
+    end
+
     defp vorbereiten!(query, datumsbereich, opts, weitere_opts \\ []) do
       query = Ecto.Queryable.to_query(query)
       opts = Keyword.validate!(opts, [:felder, :binding | weitere_opts])
@@ -398,6 +452,16 @@ if Code.ensure_loaded?(Ecto.Query) do
 
     defp spaeter_als(binding, feld, tag),
       do: dynamic([{^binding, entity}], field(entity, ^feld) > ^tag)
+
+    defp gleich(nil, feld, tag), do: dynamic([entity], field(entity, ^feld) == ^tag)
+
+    defp gleich(binding, feld, tag),
+      do: dynamic([{^binding, entity}], field(entity, ^feld) == ^tag)
+
+    defp ungleich(nil, feld, tag), do: dynamic([entity], field(entity, ^feld) != ^tag)
+
+    defp ungleich(binding, feld, tag),
+      do: dynamic([{^binding, entity}], field(entity, ^feld) != ^tag)
 
     defp ohne_wert(nil, feld), do: dynamic([entity], is_nil(field(entity, ^feld)))
     defp ohne_wert(binding, feld), do: dynamic([{^binding, entity}], is_nil(field(entity, ^feld)))

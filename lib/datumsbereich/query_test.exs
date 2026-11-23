@@ -312,6 +312,36 @@ defmodule Shared.Datumsbereich.QueryTest do
     end
   end
 
+  describe "entspricht/3" do
+    test "prüft, ob die Entity genau an Beginn & Ende des Datumsbereichs beginnt und endet" do
+      erwartet =
+        where(Vertrag, [v], v.gueltig_ab == ^~D[2025-01-01] and v.gueltig_bis == ^~D[2025-01-31])
+
+      assert_gleiche_query(erwartet, Query.entspricht(Vertrag, ~m[2025-01]))
+    end
+
+    test "unterstützt :felder und :binding" do
+      query = join(Urlaub, :inner, [u], v in "vertraege", as: :vertrag, on: true)
+
+      erwartet =
+        where(query, [vertrag: v], v.ab == ^~D[2025-01-01] and v.bis == ^~D[2025-12-31])
+
+      assert_gleiche_query(
+        erwartet,
+        Query.entspricht(query, [beginn: ~D[2025-01-01], ende: ~D[2025-12-31]],
+          binding: :vertrag,
+          felder: [beginn: :ab, ende: :bis]
+        )
+      )
+    end
+
+    test "unterstützt kein :offenes_ende" do
+      assert_raise ArgumentError, fn ->
+        Query.entspricht(Vertrag, ~m[2025-01], offenes_ende: true)
+      end
+    end
+  end
+
   describe "negierte Varianten" do
     test "verwenden :binding und die Felder aus dem Schema des Bindings" do
       query = join(Urlaub, :inner, [u], v in assoc(u, :vertrag), as: :vertrag)
@@ -346,8 +376,25 @@ defmodule Shared.Datumsbereich.QueryTest do
       )
     end
 
+    test "entspricht_nicht/3 schließt Entities ohne Ende ein" do
+      erwartet =
+        where(
+          Vertrag,
+          [v],
+          v.gueltig_ab != ^~D[2025-01-01] or is_nil(v.gueltig_bis) or
+            v.gueltig_bis != ^~D[2025-01-31]
+        )
+
+      assert_gleiche_query(erwartet, Query.entspricht_nicht(Vertrag, ~m[2025-01]))
+    end
+
     test "unterstützen :offenes_ende nur, wenn die positive Variante es unterstützt" do
-      for funktion <- [:beginnt_nicht_in, :endet_nicht_in, :ist_nicht_enthalten_in] do
+      for funktion <- [
+            :beginnt_nicht_in,
+            :endet_nicht_in,
+            :ist_nicht_enthalten_in,
+            :entspricht_nicht
+          ] do
         assert_raise ArgumentError, fn ->
           apply(Query, funktion, [Vertrag, ~m[2025-01], [offenes_ende: true]])
         end
