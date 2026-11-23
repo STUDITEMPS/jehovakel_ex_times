@@ -211,7 +211,7 @@ defmodule Shared.DatumsbereichTest do
     test "wirft einen Fehler, wenn ende vor beginn liegt, statt den Bereich umzudrehen" do
       struct = %MitDefaultKeys{beginn: ~D[2025-07-14], ende: ~D[2025-07-01]}
 
-      assert_raise ArgumentError, ~r/wird nicht unterstützt/, fn ->
+      assert_raise RuntimeError, ~r/Ungültiger Rückgabewert von to_date_range\/1/, fn ->
         Datumsbereich.to_date_range(struct)
       end
     end

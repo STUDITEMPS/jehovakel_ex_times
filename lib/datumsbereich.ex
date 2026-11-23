@@ -55,16 +55,25 @@ defmodule Shared.Datumsbereich do
           | struct()
 
   @doc """
-  Gibt den Datumsbereich `t:t/0` eines Structs zurück.
+  Gibt den Datumsbereich `t:t/0` eines Structs als `t:Date.Range.t/0` zurück.
 
   Diesen Callback implementieren Module von Structs, die einen Zeitraum
   beschreiben, zum Beispiel eine Woche (`Shared.Week`) oder Schulferien.
 
-  Zurückgegeben wird ein nicht leeres `Date.Range` mit `step: 1` oder `-1`, ein
-  `Date` oder ein Struct, das sich wiederum in ein `Date.Range` umwandeln lässt.
   Die Funktionen dieses Moduls rufen den Callback über `to_date_range/1` auf.
+
+  ## Hinweis
+  Implementierungen die eine Date.Range mit step != 1 zurück geben werden von
+  `to_date_range/1` nicht Unterstützt. Wir akzeptieren diese Schwäche, da es
+  selten ein Problem ist und überlassen die Lösung unseren Zukunfts-Ichs.
   """
-  @callback to_date_range(struct()) :: t()
+  @callback to_date_range(struct()) :: %Date.Range{
+              first: Date.t(),
+              first_in_iso_days: integer,
+              last: Date.t(),
+              last_in_iso_days: integer,
+              step: 1
+            }
 
   defmacrop beginn(range), do: quote(do: unquote(range).first_in_iso_days)
   defmacrop ende(range), do: quote(do: unquote(range).last_in_iso_days)
@@ -148,7 +157,8 @@ defmodule Shared.Datumsbereich do
 
       quote do
         @impl Shared.Datumsbereich
-        def to_date_range(%__MODULE__{} = struct), do: struct.unquote(datumsbereich_key)
+        def to_date_range(%__MODULE__{} = struct),
+          do: unquote(__MODULE__).to_date_range(struct.unquote(datumsbereich_key))
       end
     else
       default = if :beginn not in struct_keys and :start in struct_keys, do: :start, else: :beginn
@@ -219,7 +229,9 @@ defmodule Shared.Datumsbereich do
 
   def to_date_range(%modul{} = wert) do
     if Code.ensure_loaded?(modul) and function_exported?(modul, :to_date_range, 1) do
-      to_date_range(modul.to_date_range(wert))
+      with range when not is_valid(range) <- modul.to_date_range(wert) do
+        raise "Ungültiger Rückgabewert von to_date_range/1. Unterstützt werden nur nicht leere Date.Ranges mit step 1"
+      end
     else
       raise ArgumentError, "#{inspect(modul)} definiert kein to_date_range/1"
     end
