@@ -30,6 +30,16 @@ defmodule Shared.DatumsbereichTest do
     defstruct [:datumsbereich, :betrag]
   end
 
+  defmodule EctoSchema do
+    use Ecto.Schema
+    use Shared.Datumsbereich
+
+    embedded_schema do
+      field(:beginn, :date)
+      field(:ende, :date, virtual: true)
+    end
+  end
+
   defmodule Kalender do
     @moduledoc false
     @behaviour Calendar
@@ -195,6 +205,42 @@ defmodule Shared.DatumsbereichTest do
           defstruct [:gueltig_ab]
         end
       end
+    end
+
+    test "akzeptiert Ecto-Schemas mit (virtuellen) Feldern vom Typ :date" do
+      struct = %EctoSchema{beginn: ~D[2025-07-01], ende: ~D[2025-07-14]}
+
+      assert Date.range(~D[2025-07-01], ~D[2025-07-14]) == EctoSchema.to_date_range(struct)
+    end
+
+    test "wirft einen Fehler, wenn ein Ecto-Feld nicht vom Typ :date ist" do
+      assert_raise ArgumentError,
+                   ~r/^:ende of .* must be an Ecto field of type :date, got: :naive_datetime/,
+                   fn ->
+                     defmodule EctoSchemaMitFalschemTyp do
+                       use Ecto.Schema
+                       use Shared.Datumsbereich
+
+                       embedded_schema do
+                         field(:beginn, :date)
+                         field(:ende, :naive_datetime)
+                       end
+                     end
+                   end
+    end
+
+    test "überspringt die Ecto-Validierung mit ecto_validierung: false" do
+      defmodule EctoSchemaOhneValidierung do
+        use Ecto.Schema
+        use Shared.Datumsbereich, ecto_validierung: false
+
+        embedded_schema do
+          field(:beginn, :date)
+          field(:ende, :naive_datetime)
+        end
+      end
+
+      assert function_exported?(EctoSchemaOhneValidierung, :to_date_range, 1)
     end
 
     test "wirft einen Fehler, wenn der datumsbereich-Key fehlt" do

@@ -134,6 +134,9 @@ defmodule Shared.Datumsbereich do
     * `:beginn` – Feld mit dem ersten Tag als `Date`. Default ist `:beginn`,
       bzw. `:start`, wenn das Struct kein Feld `:beginn`, aber ein Feld `:start` hat.
     * `:ende` – Feld mit dem letzten Tag (inklusive) als `Date`. Default ist `:ende`.
+    * `:ecto_validierung` – Ist das Struct ein Ecto-Schema, müssen `:beginn` und
+      `:ende` (virtuelle) Felder vom Typ `:date` sein. Mit `false` wird diese Prüfung
+      abgeschaltet. Default ist `true`.
 
   ## Beispiele
 
@@ -178,6 +181,7 @@ defmodule Shared.Datumsbereich do
       @behaviour Shared.Datumsbereich
       @datumsbereich_optionen unquote(optionen)
       @before_compile Shared.Datumsbereich
+      @after_compile Shared.Datumsbereich
     end
   end
 
@@ -202,6 +206,10 @@ defmodule Shared.Datumsbereich do
       validiere_key!(beginn_key, struct_keys, env.module)
       validiere_key!(ende_key, struct_keys, env.module)
 
+      if Keyword.get(optionen, :ecto_validierung, true) do
+        Module.put_attribute(env.module, :datumsbereich_ecto_keys, [beginn_key, ende_key])
+      end
+
       quote do
         @impl Shared.Datumsbereich
         def to_date_range(%__MODULE__{
@@ -210,6 +218,16 @@ defmodule Shared.Datumsbereich do
             }),
             do: Date.range(beginn, ende, 1)
       end
+    end
+  end
+
+  # Erst nach dem Kompilieren ist __schema__/2 des Ecto-Schemas aufrufbar.
+  @doc false
+  def __after_compile__(env, _bytecode) do
+    keys = Module.get_attribute(env.module, :datumsbereich_ecto_keys, [])
+
+    if keys != [] and function_exported?(env.module, :__schema__, 2) do
+      Enum.each(keys, &validiere_ecto_feld!(&1, env.module))
     end
   end
 
@@ -553,6 +571,18 @@ defmodule Shared.Datumsbereich do
     if key not in struct_keys do
       raise ArgumentError,
             "#{inspect(key)} is not a key of %#{inspect(module)}{}. Keys are: #{inspect(struct_keys)}"
+    end
+  end
+
+  defp validiere_ecto_feld!(key, module) do
+    case module.__schema__(:type, key) || module.__schema__(:virtual_type, key) do
+      :date ->
+        :ok
+
+      type ->
+        raise ArgumentError,
+              "#{inspect(key)} of #{inspect(module)} must be an Ecto field of type :date, got: #{inspect(type)}. " <>
+                "Use ecto_validierung: false to disable this check"
     end
   end
 
