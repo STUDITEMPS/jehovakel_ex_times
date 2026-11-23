@@ -53,6 +53,7 @@ defmodule Shared.Datumsbereich do
             step: 1 | -1
           }
           | Date.t()
+          | [beginn: Date.t(), ende: Date.t()]
           | intervall_auf_tagesgrenzen()
           | struct()
 
@@ -258,6 +259,15 @@ defmodule Shared.Datumsbereich do
       iex> to_date_range(~N[2025-01-01 12:00:00])
       ** (ArgumentError) NaiveDateTime definiert kein to_date_range/1
 
+      iex> to_date_range(beginn: ~D[2025-01-01], ende: ~D[2025-01-05])
+      Date.range(~D[2025-01-01], ~D[2025-01-05])
+
+      iex> to_date_range(ende: ~D[2025-01-05], beginn: ~D[2025-01-01])
+      Date.range(~D[2025-01-01], ~D[2025-01-05])
+
+      iex> to_date_range(beginn: ~D[2025-01-05], ende: ~D[2025-01-01])
+      ** (ArgumentError) Date.range(~D[2025-01-05], ~D[2025-01-01]) wird nicht unterstützt, nur nicht leere Date.Ranges mit step 1 oder -1
+
       iex> to_date_range(Date.range(~D[2025-01-05], ~D[2025-01-01], -1))
       Date.range(~D[2025-01-01], ~D[2025-01-05])
 
@@ -289,6 +299,12 @@ defmodule Shared.Datumsbereich do
   end
 
   def to_date_range(%Date{} = datum), do: Date.range(datum, datum)
+
+  def to_date_range(beginn: %Date{} = beginn, ende: %Date{} = ende),
+    do: to_date_range(Date.range(beginn, ende, 1))
+
+  def to_date_range(ende: %Date{} = ende, beginn: %Date{} = beginn),
+    do: to_date_range(Date.range(beginn, ende, 1))
 
   def to_date_range(%Timex.Interval{from: from, until: until, left_open: false, right_open: true})
       when is_tagesgrenze(from) and is_tagesgrenze(until) do

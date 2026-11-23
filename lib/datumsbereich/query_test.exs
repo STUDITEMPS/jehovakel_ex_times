@@ -362,7 +362,7 @@ defmodule Shared.Datumsbereich.QueryTest do
   end
 
   test "wirft einen Fehler, wenn Beginn & Ende keine Dates sind" do
-    assert_raise ArgumentError, ~r/^datumsbereich must be a keyword list with Dates/, fn ->
+    assert_raise FunctionClauseError, fn ->
       Query.ueberschneidet_sich_mit(Vertrag,
         beginn: ~N[2025-01-01 00:00:00],
         ende: ~D[2025-01-31]
@@ -371,7 +371,7 @@ defmodule Shared.Datumsbereich.QueryTest do
   end
 
   test "wirft einen Fehler, wenn Beginn nach Ende liegt" do
-    assert_raise ArgumentError, ~r/^datumsbereich :beginn must not be after :ende/, fn ->
+    assert_raise ArgumentError, ~r/wird nicht unterstützt/, fn ->
       Query.ueberschneidet_sich_mit(Vertrag, beginn: ~D[2025-01-31], ende: ~D[2025-01-01])
     end
   end

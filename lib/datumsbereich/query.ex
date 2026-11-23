@@ -50,14 +50,9 @@ if Code.ensure_loaded?(Ecto.Query) do
         |> Repo.all()
     """
 
-    import Ecto.Query, only: [dynamic: 1, dynamic: 2, where: 2]
+    alias Shared.Datumsbereich
 
-    @typedoc """
-    Ein `t:Shared.Datumsbereich.t/0` oder eine Keyword-Liste mit erstem
-    (`:beginn`) und letztem Tag (`:ende`, inklusive). `:beginn` darf nicht nach
-    `:ende` liegen.
-    """
-    @type datumsbereich :: Shared.Datumsbereich.t() | [beginn: Date.t(), ende: Date.t()]
+    import Ecto.Query, only: [dynamic: 1, dynamic: 2, where: 2]
 
     @typedoc """
     * `:felder` – Beginn- und Ende-Feld der Entity, z. B.
@@ -103,7 +98,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         ...> )
         #Ecto.Query<from v0 in "vertraege", where: v0.anfang <= ^~D[2025-01-15] and v0.schluss >= ^~D[2025-01-01]>
     """
-    @spec ueberschneidet_sich_mit(Ecto.Queryable.t(), datumsbereich(), opts_mit_offenem_ende()) ::
+    @spec ueberschneidet_sich_mit(Ecto.Queryable.t(), Datumsbereich.t(), opts_mit_offenem_ende()) ::
             Ecto.Query.t()
     def ueberschneidet_sich_mit(query, datumsbereich, opts \\ []) do
       {query, opts, {beginn_feld, ende_feld}, {erster_tag, letzter_tag}} =
@@ -137,7 +132,7 @@ if Code.ensure_loaded?(Ecto.Query) do
     """
     @spec ueberschneidet_sich_nicht_mit(
             Ecto.Queryable.t(),
-            datumsbereich(),
+            Datumsbereich.t(),
             opts_mit_offenem_ende()
           ) :: Ecto.Query.t()
     def ueberschneidet_sich_nicht_mit(query, datumsbereich, opts \\ []) do
@@ -168,7 +163,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         iex> beginnt_in(Vertrag, ~D[2025-01-15])
         #Ecto.Query<from v0 in Vertrag, where: v0.gueltig_ab >= ^~D[2025-01-15] and v0.gueltig_ab <= ^~D[2025-01-15]>
     """
-    @spec beginnt_in(Ecto.Queryable.t(), datumsbereich(), opts()) :: Ecto.Query.t()
+    @spec beginnt_in(Ecto.Queryable.t(), Datumsbereich.t(), opts()) :: Ecto.Query.t()
     def beginnt_in(query, datumsbereich, opts \\ []) do
       {query, opts, {beginn_feld, _ende_feld}, tage} = vorbereiten!(query, datumsbereich, opts)
       where(query, ^zwischen(opts[:binding], beginn_feld, tage))
@@ -185,7 +180,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         iex> beginnt_nicht_in(Vertrag, ~m[2025-01])
         #Ecto.Query<from v0 in Vertrag, where: v0.gueltig_ab < ^~D[2025-01-01] or v0.gueltig_ab > ^~D[2025-01-31]>
     """
-    @spec beginnt_nicht_in(Ecto.Queryable.t(), datumsbereich(), opts()) :: Ecto.Query.t()
+    @spec beginnt_nicht_in(Ecto.Queryable.t(), Datumsbereich.t(), opts()) :: Ecto.Query.t()
     def beginnt_nicht_in(query, datumsbereich, opts \\ []) do
       {query, opts, {beginn_feld, _ende_feld}, tage} = vorbereiten!(query, datumsbereich, opts)
       where(query, ^ausserhalb(opts[:binding], beginn_feld, tage))
@@ -209,7 +204,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         ...> |> endet_in(~m[2025-01], binding: :vertrag)
         #Ecto.Query<from u0 in Urlaub, join: v1 in assoc(u0, :vertrag), as: :vertrag, where: v1.gueltig_bis >= ^~D[2025-01-01] and v1.gueltig_bis <= ^~D[2025-01-31]>
     """
-    @spec endet_in(Ecto.Queryable.t(), datumsbereich(), opts()) :: Ecto.Query.t()
+    @spec endet_in(Ecto.Queryable.t(), Datumsbereich.t(), opts()) :: Ecto.Query.t()
     def endet_in(query, datumsbereich, opts \\ []) do
       {query, opts, {_beginn_feld, ende_feld}, tage} = vorbereiten!(query, datumsbereich, opts)
       where(query, ^zwischen(opts[:binding], ende_feld, tage))
@@ -226,7 +221,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         iex> endet_nicht_in(Vertrag, ~m[2025-01])
         #Ecto.Query<from v0 in Vertrag, where: is_nil(v0.gueltig_bis) or (v0.gueltig_bis < ^~D[2025-01-01] or v0.gueltig_bis > ^~D[2025-01-31])>
     """
-    @spec endet_nicht_in(Ecto.Queryable.t(), datumsbereich(), opts()) :: Ecto.Query.t()
+    @spec endet_nicht_in(Ecto.Queryable.t(), Datumsbereich.t(), opts()) :: Ecto.Query.t()
     def endet_nicht_in(query, datumsbereich, opts \\ []) do
       {query, opts, {_beginn_feld, ende_feld}, tage} = vorbereiten!(query, datumsbereich, opts)
       binding = opts[:binding]
@@ -251,7 +246,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         iex> enthaelt(Vertrag, ~m[2025-01], offenes_ende: true)
         #Ecto.Query<from v0 in Vertrag, where: v0.gueltig_ab <= ^~D[2025-01-01] and (is_nil(v0.gueltig_bis) or v0.gueltig_bis >= ^~D[2025-01-31])>
     """
-    @spec enthaelt(Ecto.Queryable.t(), datumsbereich(), opts_mit_offenem_ende()) ::
+    @spec enthaelt(Ecto.Queryable.t(), Datumsbereich.t(), opts_mit_offenem_ende()) ::
             Ecto.Query.t()
     def enthaelt(query, datumsbereich, opts \\ []) do
       {query, opts, {beginn_feld, ende_feld}, {erster_tag, letzter_tag}} =
@@ -283,7 +278,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         iex> enthaelt_nicht(Vertrag, ~m[2025-01], offenes_ende: true)
         #Ecto.Query<from v0 in Vertrag, where: v0.gueltig_ab > ^~D[2025-01-01] or v0.gueltig_bis < ^~D[2025-01-31]>
     """
-    @spec enthaelt_nicht(Ecto.Queryable.t(), datumsbereich(), opts_mit_offenem_ende()) ::
+    @spec enthaelt_nicht(Ecto.Queryable.t(), Datumsbereich.t(), opts_mit_offenem_ende()) ::
             Ecto.Query.t()
     def enthaelt_nicht(query, datumsbereich, opts \\ []) do
       {query, opts, {beginn_feld, ende_feld}, {erster_tag, letzter_tag}} =
@@ -311,7 +306,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         iex> ist_enthalten_in(Vertrag, ~m[2025-01])
         #Ecto.Query<from v0 in Vertrag, where: v0.gueltig_ab >= ^~D[2025-01-01] and v0.gueltig_bis <= ^~D[2025-01-31]>
     """
-    @spec ist_enthalten_in(Ecto.Queryable.t(), datumsbereich(), opts()) :: Ecto.Query.t()
+    @spec ist_enthalten_in(Ecto.Queryable.t(), Datumsbereich.t(), opts()) :: Ecto.Query.t()
     def ist_enthalten_in(query, datumsbereich, opts \\ []) do
       {query, opts, {beginn_feld, ende_feld}, {erster_tag, letzter_tag}} =
         vorbereiten!(query, datumsbereich, opts)
@@ -339,7 +334,7 @@ if Code.ensure_loaded?(Ecto.Query) do
         iex> ist_nicht_enthalten_in(Vertrag, ~m[2025-01])
         #Ecto.Query<from v0 in Vertrag, where: v0.gueltig_ab < ^~D[2025-01-01] or is_nil(v0.gueltig_bis) or v0.gueltig_bis > ^~D[2025-01-31]>
     """
-    @spec ist_nicht_enthalten_in(Ecto.Queryable.t(), datumsbereich(), opts()) :: Ecto.Query.t()
+    @spec ist_nicht_enthalten_in(Ecto.Queryable.t(), Datumsbereich.t(), opts()) :: Ecto.Query.t()
     def ist_nicht_enthalten_in(query, datumsbereich, opts \\ []) do
       {query, opts, {beginn_feld, ende_feld}, {erster_tag, letzter_tag}} =
         vorbereiten!(query, datumsbereich, opts)
@@ -358,7 +353,8 @@ if Code.ensure_loaded?(Ecto.Query) do
     defp vorbereiten!(query, datumsbereich, opts, weitere_opts \\ []) do
       query = Ecto.Queryable.to_query(query)
       opts = Keyword.validate!(opts, [:felder, :binding | weitere_opts])
-      {query, opts, felder!(query, opts), erster_und_letzter_tag!(datumsbereich)}
+      %{first: erster_tag, last: letzter_tag} = Datumsbereich.to_date_range(datumsbereich)
+      {query, opts, felder!(query, opts), {erster_tag, letzter_tag}}
     end
 
     defp zwischen(binding, feld, {erster_tag, letzter_tag}) do
@@ -405,28 +401,6 @@ if Code.ensure_loaded?(Ecto.Query) do
 
     defp ohne_wert(nil, feld), do: dynamic([entity], is_nil(field(entity, ^feld)))
     defp ohne_wert(binding, feld), do: dynamic([{^binding, entity}], is_nil(field(entity, ^feld)))
-
-    defp erster_und_letzter_tag!(datumsbereich) when is_list(datumsbereich) do
-      case beginn_und_ende(datumsbereich) do
-        {%Date{} = beginn, %Date{} = ende} = tage ->
-          if Date.after?(beginn, ende) do
-            raise ArgumentError,
-                  "datumsbereich :beginn must not be after :ende, got: #{inspect(datumsbereich)}"
-          end
-
-          tage
-
-        _ ->
-          raise ArgumentError,
-                "datumsbereich must be a keyword list with Dates for exactly :beginn and :ende, " <>
-                  "got: #{inspect(datumsbereich)}"
-      end
-    end
-
-    defp erster_und_letzter_tag!(datumsbereich) do
-      range = Shared.Datumsbereich.to_date_range(datumsbereich)
-      {range.first, range.last}
-    end
 
     defp felder!(query, opts) do
       case opts[:felder] do
