@@ -233,6 +233,30 @@ defmodule Shared.DatumsbereichTest do
                })
     end
 
+    test "macht aus einem halboffenen Timex.Interval auf Tagesgrenzen einen Date.Range" do
+      intervall = %Timex.Interval{from: ~N[2025-01-01 00:00:00], until: ~N[2025-01-02 00:00:00]}
+
+      assert Date.range(~D[2025-01-01], ~D[2025-01-01]) == Datumsbereich.to_date_range(intervall)
+    end
+
+    test "wirft einen Fehler für Timex.Intervalle, die nicht genau ganze Tage umfassen" do
+      tag = ~N[2025-01-01 00:00:00]
+      folgetag = ~N[2025-01-02 00:00:00]
+
+      for intervall <- [
+            %Timex.Interval{from: tag, until: tag},
+            %Timex.Interval{from: folgetag, until: tag},
+            %Timex.Interval{from: ~N[2025-01-01 00:00:00.000001], until: folgetag},
+            %Timex.Interval{from: tag, until: folgetag, left_open: true},
+            %Timex.Interval{from: tag, until: folgetag, right_open: false},
+            %Timex.Interval{from: ~U[2025-01-01 00:00:00Z], until: ~U[2025-01-02 00:00:00Z]}
+          ] do
+        assert_raise ArgumentError, fn ->
+          Datumsbereich.to_date_range(intervall)
+        end
+      end
+    end
+
     test "wirft einen Fehler, wenn der datumsbereich-Key weder Date.Range noch to_date_range/1 hat" do
       assert_raise ArgumentError, ~r/NaiveDateTime definiert kein to_date_range/, fn ->
         Datumsbereich.to_date_range(%MitDatumsbereichKey{

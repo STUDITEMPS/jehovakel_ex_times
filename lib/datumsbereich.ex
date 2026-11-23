@@ -40,8 +40,9 @@ defmodule Shared.Datumsbereich do
   alias Shared.Datumsbereich.Ueberlagerung
 
   @typedoc """
-  Ein `t:Date.Range.t/0` mit `step: 1` oder `-1`, ein `t:Date.t/0` oder ein
-  Struct, dessen Modul `c:to_date_range/1` implementiert.
+  Ein `t:Date.Range.t/0` mit `step: 1` oder `-1`, ein `t:Date.t/0`, ein
+  `t:intervall_auf_tagesgrenzen/0` oder ein Struct, dessen Modul
+  `c:to_date_range/1` implementiert.
   """
   @type t ::
           %Date.Range{
@@ -52,7 +53,35 @@ defmodule Shared.Datumsbereich do
             step: 1 | -1
           }
           | Date.t()
+          | intervall_auf_tagesgrenzen()
           | struct()
+
+  @typedoc """
+  Ein nicht leeres, halboffenes `t:Timex.Interval.t/0`, dessen `from` und
+  `until` `t:NaiveDateTime.t/0`s genau um Mitternacht sind. `until` ist der
+  erste Tag, der nicht mehr zum Bereich gehört.
+  """
+  @type intervall_auf_tagesgrenzen :: %Timex.Interval{
+          from: mitternacht(),
+          until: mitternacht(),
+          left_open: false,
+          right_open: true,
+          step: Timex.Interval.valid_interval_steps()
+        }
+
+  @typedoc """
+  Ein `t:NaiveDateTime.t/0` genau um 0 Uhr, also der Beginn eines Tages.
+  """
+  @type mitternacht :: %NaiveDateTime{
+          calendar: Calendar.calendar(),
+          year: Calendar.year(),
+          month: Calendar.month(),
+          day: Calendar.day(),
+          hour: 0,
+          minute: 0,
+          second: 0,
+          microsecond: {0, Calendar.microsecond_precision()}
+        }
 
   @doc """
   Gibt den Datumsbereich `t:t/0` eines Structs als `t:Date.Range.t/0` zurück.
@@ -82,6 +111,11 @@ defmodule Shared.Datumsbereich do
             when is_struct(range, Date.Range) and range.step == 1 and beginn(range) <= ende(range)
 
   defguardp are_valid(a, b) when is_valid(a) and is_valid(b)
+
+  defguardp is_tagesgrenze(zeitpunkt)
+            when is_struct(zeitpunkt, NaiveDateTime) and zeitpunkt.hour == 0 and
+                   zeitpunkt.minute == 0 and zeitpunkt.second == 0 and
+                   elem(zeitpunkt.microsecond, 0) == 0
 
   # Nur private, da a & b sortiert sein müssen.
   defguardp luecke_besteht(a, b) when ende(a) + 1 < beginn(b)
@@ -206,6 +240,12 @@ defmodule Shared.Datumsbereich do
 
       iex> to_date_range(Date.range(~D[2025-01-01], ~D[2025-01-05], 2))
       ** (ArgumentError) Date.range(~D[2025-01-01], ~D[2025-01-05], 2) wird nicht unterstützt, nur nicht leere Date.Ranges mit step 1 oder -1
+
+      iex> to_date_range(Timex.Interval.new(from: ~N[2025-01-01 00:00:00], until: ~N[2025-01-06 00:00:00]))
+      Date.range(~D[2025-01-01], ~D[2025-01-05])
+
+      iex> to_date_range(Timex.Interval.new(from: ~N[2025-01-01 00:00:00], until: ~N[2025-01-06 12:00:00]))
+      ** (ArgumentError) Timex.Interval muss genau auf Tagesgrenzen beginnen & enden, um zu Date.Range konvertiert zu werden
   """
   @spec to_date_range(t()) :: Date.Range.t()
   def to_date_range(range) when is_valid(range), do: range
@@ -226,6 +266,22 @@ defmodule Shared.Datumsbereich do
   end
 
   def to_date_range(%Date{} = datum), do: Date.range(datum, datum)
+
+  def to_date_range(%Timex.Interval{from: from, until: until, left_open: false, right_open: true})
+      when is_tagesgrenze(from) and is_tagesgrenze(until) do
+    to_date_range(
+      Date.range(
+        NaiveDateTime.to_date(from),
+        Date.add(NaiveDateTime.to_date(until), -1),
+        1
+      )
+    )
+  end
+
+  def to_date_range(%Timex.Interval{}) do
+    raise ArgumentError,
+          "Timex.Interval muss genau auf Tagesgrenzen beginnen & enden, um zu Date.Range konvertiert zu werden"
+  end
 
   def to_date_range(%modul{} = wert) do
     if Code.ensure_loaded?(modul) and function_exported?(modul, :to_date_range, 1) do
