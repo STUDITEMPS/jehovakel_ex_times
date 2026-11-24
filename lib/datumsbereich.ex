@@ -586,6 +586,63 @@ defmodule Shared.Datumsbereich do
   def dauer(range) when is_valid(range), do: ende(range) - beginn(range) + 1
   def dauer(%_{} = datumsbereich), do: dauer(to_date_range(datumsbereich))
 
+  # --- String-Darstellung ---
+
+  @doc """
+  Liest einen Datumsbereich im ISO-8601-Intervallformat `beginn/ende` ein.
+  Beide Tage gehören zum Bereich. Ist der String kein gültiger Datumsbereich,
+  wird eine Exception geworfen.
+
+  ## Beispiele
+
+      iex> parse!("2025-01-01/2025-01-05")
+      Date.range(~D[2025-01-01], ~D[2025-01-05])
+
+      iex> parse!("2025-01-01/2025-01-01")
+      Date.range(~D[2025-01-01], ~D[2025-01-01])
+
+      iex> parse!("2025-01-05/2025-01-01")
+      ** (ArgumentError) Date.range(~D[2025-01-05], ~D[2025-01-01]) wird nicht unterstützt, nur nicht leere Date.Ranges mit step 1 oder -1
+
+      iex> parse!("2025-01-01/2025-02-30")
+      ** (ArgumentError) cannot parse "2025-02-30" as date, reason: :invalid_date
+
+      iex> parse!("2025-01-01")
+      ** (ArgumentError) Datumsbereich "2025-01-01" konnte nicht geparsed werden.
+  """
+  @spec parse!(String.t()) :: Date.Range.t()
+  def parse!(string) when is_binary(string) do
+    case String.split(string, "/") do
+      [_, _] = dates ->
+        [beginn, ende] = Enum.map(dates, &Date.from_iso8601!/1)
+        to_date_range(Date.range(beginn, ende, 1))
+
+      _ ->
+        raise ArgumentError, "Datumsbereich #{inspect(string)} konnte nicht geparsed werden."
+    end
+  end
+
+  @doc """
+  Gibt einen Datumsbereich im ISO-8601-Intervallformat `beginn/ende` aus.
+  Das Gegenstück zu `parse!/1`.
+
+  ## Beispiele
+
+      iex> Shared.Datumsbereich.to_string(Date.range(~D[2025-01-01], ~D[2025-01-05]))
+      "2025-01-01/2025-01-05"
+
+      iex> Shared.Datumsbereich.to_string(~D[2025-01-01])
+      "2025-01-01/2025-01-01"
+
+      iex> Shared.Datumsbereich.to_string(~m[2025-02])
+      "2025-02-01/2025-02-28"
+  """
+  @spec to_string(t()) :: String.t()
+  def to_string(datumsbereich) do
+    range = to_date_range(datumsbereich)
+    Date.to_iso8601(range.first) <> "/" <> Date.to_iso8601(range.last)
+  end
+
   # --- Private Funktionen ---
 
   defp validiere_key!(key, struct_keys, module) do
